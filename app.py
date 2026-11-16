@@ -98,7 +98,9 @@ def settle_required_penalties():
             required=[r['id'] for r in c.execute("SELECT id FROM tasks WHERE deleted=0 AND week=? AND kind='required'",(wk,))]
             if not required: continue
             for uid in members:
-                if c.execute("SELECT 1 FROM weekly_settlements WHERE week=? AND user_id=? AND kind='missed_required'",(wk,uid)).fetchone(): continue
+                if c.execute("SELECT 1 FROM weekly_settlements WHERE week=? AND user_id=? AND kind='missed_required'",(wk,uid)).fetchone():
+                    refund_exempt_penalty(c,uid,wk)
+                    continue
                 missed=False; deferred=False
                 for tid in required:
                     if c.execute("SELECT 1 FROM records WHERE user_id=? AND task_id=? AND status='approved'",(uid,tid)).fetchone(): continue
@@ -646,9 +648,10 @@ def review(rid):
     action=request.form.get('action'); note=textfield('review_note')
     if action not in ('approved','rejected'): abort(400)
     with db() as c:
-        c.execute('BEGIN IMMEDIATE'); r=c.execute('SELECT r.*,t.kind,t.points,t.cap FROM records r JOIN tasks t ON t.id=r.task_id WHERE r.id=?',(rid,)).fetchone()
+        c.execute('BEGIN IMMEDIATE'); r=c.execute('SELECT r.*,t.kind,t.points,t.cap,t.week FROM records r JOIN tasks t ON t.id=r.task_id WHERE r.id=?',(rid,)).fetchone()
         if not r or r['status']!='pending': abort(400)
         c.execute('UPDATE records SET status=?,review_note=?,reviewer=? WHERE id=?',(action,note,current()['id'],rid))
+        if action=='approved' and r['kind']=='required': refund_exempt_penalty(c,r['user_id'],r['week'])
         if action=='approved' and r['kind']=='bonus':
             count=c.execute("SELECT count(*) FROM ledger WHERE record_id IN (SELECT id FROM records WHERE user_id=? AND task_id=?)",(r['user_id'],r['task_id'])).fetchone()[0]
             if count<r['cap']: c.execute('INSERT INTO ledger(user_id,amount,note,record_id,created) VALUES(?,?,?,?,?)',(r['user_id'],r['points'],'附加任务',rid,now()))
@@ -706,15 +709,27 @@ def order(oid):
         c.execute('UPDATE redemptions SET status=? WHERE id=?',(status,oid))
         if status=='rejected': c.execute('UPDATE rewards SET stock=stock+1 WHERE id=?',(o['reward_id'],)); c.execute('INSERT INTO ledger(user_id,amount,note,created) VALUES(?,?,?,?)',(o['user_id'],o['cost'],'兑换退回',now()))
     return redirect(url_for('admin',section='shop'))
+def refund_exempt_penalty(c,uid,wk):
+    if not c.execute('SELECT 1 FROM exemptions e JOIN tasks t ON t.id=e.task_id WHERE e.user_id=? AND t.week=?',(uid,wk)).fetchone(): return
+    unresolved=c.execute("""SELECT 1 FROM tasks t WHERE t.week=? AND t.kind='required' AND t.deleted=0
+        AND NOT EXISTS(SELECT 1 FROM records r WHERE r.task_id=t.id AND r.user_id=? AND r.status='approved')
+        AND NOT EXISTS(SELECT 1 FROM exemptions e WHERE e.task_id=t.id AND e.user_id=?) LIMIT 1""",(wk,uid,uid)).fetchone()
+    penalty=c.execute('SELECT 1 FROM ledger WHERE user_id=? AND amount=? AND note=?',(uid,-MISSED_REQUIRED_PENALTY,wk+' 周未完成必做任务')).fetchone()
+    if not unresolved and penalty:
+        refunded=c.execute("INSERT OR IGNORE INTO weekly_settlements(week,user_id,kind,created) VALUES(?,?,?,?)",(wk,uid,'exempt_refund',now()))
+        if refunded.rowcount:
+            c.execute('INSERT INTO ledger(user_id,amount,note,created) VALUES(?,?,?,?)',(uid,MISSED_REQUIRED_PENALTY,wk+' 周必做已完成或免除，退回扣分',now()))
 @app.post('/admin/exempt')
 @admin_required
 def exempt():
     uid=positive('user_id',1,10000000); tid=positive('task_id',1,10000000)
     with db() as c:
-        t=c.execute('SELECT kind FROM tasks WHERE id=? AND deleted=0',(tid,)).fetchone()
+        c.execute('BEGIN IMMEDIATE')
+        t=c.execute('SELECT kind,week FROM tasks WHERE id=? AND deleted=0',(tid,)).fetchone()
         if not t or t['kind']!='required': abort(400)
         c.execute('INSERT OR IGNORE INTO exemptions(user_id,task_id) VALUES(?,?)',(uid,tid))
-    flash('已标记免除。'); return redirect(url_for('admin',section='members'))
+        refund_exempt_penalty(c,uid,t['week'])
+    flash('已标记免除；该周必做全部通过或免除后，已扣积分会退回。'); return redirect(url_for('admin',section='members'))
 def ai_call(messages, *, deep_thinking=False):
     key=os.environ.get('TEAM_AI_KEY'); endpoint=os.environ.get('TEAM_AI_ENDPOINT'); model=os.environ.get('TEAM_AI_MODEL')
     if not all([key,endpoint,model]): raise ValueError('尚未配置 AI 服务。')
