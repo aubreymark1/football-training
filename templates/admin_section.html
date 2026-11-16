@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<a class="back" href="{{ url_for('admin') }}">球队管理</a><h1>{{ title }}</h1><p class="page-lede">{{ description }}</p>{% include 'admin_' ~ section ~ '_content.html' %}{% endblock %}

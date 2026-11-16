@@ -1,0 +1,22 @@
+[Unit]
+Description=Football training web application
+After=network.target
+
+[Service]
+Type=simple
+User=football-training
+Group=football-training
+WorkingDirectory=/opt/football-training
+EnvironmentFile=/etc/football-training.env
+ExecStart=/opt/football-training/.venv/bin/gunicorn --workers 2 --threads 2 --timeout 90 --bind 127.0.0.1:5050 app:app
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/football-training
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,2 @@
+{% extends 'base.html' %}{% block content %}<a class="back" href="{{ url_for('home') }}">本周任务</a><h1>记录这次训练</h1><p class="page-lede">{{ task.title }}，{{ task.week }} 这周{% if task.kind=='required' %}的必做任务{% endif %}</p>
+{% set submit_label='提交记录' %}{% set privacy_hint='截图仅本人和管理员可见，配置 AI 后可能发送至模型服务分析。' %}{% include '_record_form.html' %}{% endblock %}

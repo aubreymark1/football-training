@@ -1,0 +1,2 @@
+{% extends 'base.html' %}{% block content %}<a class="back" href="{{ url_for('home') }}">本周任务</a><h1>自主训练</h1><p class="page-lede">自由上传训练记录，不绑定每周任务；管理员审核后酌情给分，单次最多 50 分。</p>
+{% set submit_label='提交自主训练' %}{% set privacy_hint='截图仅本人和管理员可见。自主训练不计入必做任务完成情况，积分由管理员审核后确定。' %}{% include '_record_form.html' %}{% endblock %}
