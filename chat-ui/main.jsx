@@ -52,11 +52,10 @@ function Shell(){
    const b=new FormData();b.set('csrf',el.dataset.csrf);
    const r=await fetch(threadUrl(t.id)+'/delete',{method:'POST',body:b,credentials:'same-origin'});
    if(!r.ok)throw Error('删除失败');
+   const removedCurrent=selectedRef.current?.id===t.id;
+   if(removedCurrent){selectedRef.current=null;setSelected(null);setInitial([])}
    const remaining=await refresh();
-   if(selectedRef.current?.id===t.id && selectionIntent.current===selectionAtStart){
-    if(remaining.length)await open(remaining[0]);
-    else{setSelected(null);setInitial([])}
-   }
+   if(removedCurrent && selectionIntent.current===selectionAtStart && remaining.length)await open(remaining[0]);
    setNotice('对话已删除');
   }catch(e){setNotice(e.message)}
   finally{setDeleting(ids=>ids.filter(id=>id!==t.id))}
