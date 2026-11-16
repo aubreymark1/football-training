@@ -78,6 +78,10 @@ def init():
         for table in ('tasks','rewards'):
             if 'deleted' not in {r['name'] for r in c.execute('PRAGMA table_info('+table+')')}: c.execute('ALTER TABLE '+table+' ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0')
         if 'module' not in {r['name'] for r in c.execute('PRAGMA table_info(tasks)')}: c.execute('ALTER TABLE tasks ADD COLUMN module TEXT')
+        if 'category' not in {r['name'] for r in c.execute('PRAGMA table_info(ledger)')}:
+            c.execute("ALTER TABLE ledger ADD COLUMN category TEXT NOT NULL DEFAULT 'training'")
+            # 这些备注来自本站原有兑换入口；只在升级时归类旧兑换与退回流水。
+            c.execute("UPDATE ledger SET category='redemption' WHERE record_id IS NULL AND (note LIKE '兑换 %' OR note IN ('兑换退回','取消兑换退回'))")
 def public_base():
     base=os.environ.get('TEAM_PUBLIC_URL','').rstrip('/')
     return base or request.url_root.rstrip('/')
@@ -112,11 +116,11 @@ def settle_required_penalties():
                     c.execute('INSERT INTO ledger(user_id,amount,note,created) VALUES(?,?,?,?)',(uid,-MISSED_REQUIRED_PENALTY,wk+' 周未完成必做任务',now()))
                 c.execute("INSERT OR IGNORE INTO weekly_settlements(week,user_id,kind,created) VALUES(?,?,?,?)",(wk,uid,'missed_required',now()))
 def team_standings():
-    """累计积分排名；取后 20% 作为本周需加练的队员。"""
+    """累计训练积分排名；取后 20% 作为本周需加练的队员。"""
     w=week()
     with db() as c:
         rows=[dict(r) for r in c.execute('''SELECT u.id,u.name,u.real_name,u.role,
-            coalesce((SELECT sum(amount) FROM ledger WHERE user_id=u.id),0) points,
+            coalesce((SELECT sum(amount) FROM ledger WHERE user_id=u.id AND category='training'),0) points,
             (SELECT count(DISTINCT r.task_id) FROM records r JOIN tasks t ON t.id=r.task_id WHERE r.user_id=u.id AND r.status='approved' AND t.week=? AND t.kind='required') done
             FROM users u WHERE u.deleted=0 AND u.active=1 ORDER BY points DESC,done DESC,u.name''',(w,))]
         bonus={r['user_id']:r['n'] for r in c.execute("SELECT r.user_id,count(DISTINCT r.task_id) n FROM records r JOIN tasks t ON t.id=r.task_id WHERE t.week=? AND t.kind='bonus' AND r.status='approved' GROUP BY r.user_id",(w,))}
@@ -409,7 +413,7 @@ def redeem(rid):
     with db() as c:
         c.execute('BEGIN IMMEDIATE'); reward=c.execute('SELECT * FROM rewards WHERE id=? AND deleted=0',(rid,)).fetchone(); points=c.execute('SELECT coalesce(sum(amount),0) FROM ledger WHERE user_id=?',(current()['id'],)).fetchone()[0]
         if not reward or reward['stock']<1 or points<reward['cost']: flash('积分不足或礼品已兑完。','error'); return redirect(url_for('rewards'))
-        c.execute('UPDATE rewards SET stock=stock-1 WHERE id=?',(rid,)); c.execute('INSERT INTO redemptions(user_id,reward_id,cost,created) VALUES(?,?,?,?)',(current()['id'],rid,reward['cost'],now())); c.execute('INSERT INTO ledger(user_id,amount,note,created) VALUES(?,?,?,?)',(current()['id'],-reward['cost'],'兑换 '+reward['name'],now()))
+        c.execute('UPDATE rewards SET stock=stock-1 WHERE id=?',(rid,)); c.execute('INSERT INTO redemptions(user_id,reward_id,cost,created) VALUES(?,?,?,?)',(current()['id'],rid,reward['cost'],now())); c.execute('INSERT INTO ledger(user_id,amount,note,created,category) VALUES(?,?,?,?,?)',(current()['id'],-reward['cost'],'兑换 '+reward['name'],now(),'redemption'))
     flash('兑换申请已提交，请联系管理员领取。'); return redirect(url_for('reward_orders'))
 @app.get('/team')
 @login_required
@@ -575,7 +579,7 @@ def cancel_order(oid):
     with db() as c:
         c.execute('BEGIN IMMEDIATE'); o=c.execute('SELECT * FROM redemptions WHERE id=? AND user_id=?',(oid,current()['id'])).fetchone()
         if not o or o['status']!='pending': abort(400)
-        c.execute("UPDATE redemptions SET status='rejected' WHERE id=?",(oid,)); c.execute('UPDATE rewards SET stock=stock+1 WHERE id=?',(o['reward_id'],)); c.execute('INSERT INTO ledger(user_id,amount,note,created) VALUES(?,?,?,?)',(o['user_id'],o['cost'],'取消兑换退回',now()))
+        c.execute("UPDATE redemptions SET status='rejected' WHERE id=?",(oid,)); c.execute('UPDATE rewards SET stock=stock+1 WHERE id=?',(o['reward_id'],)); c.execute('INSERT INTO ledger(user_id,amount,note,created,category) VALUES(?,?,?,?,?)',(o['user_id'],o['cost'],'取消兑换退回',now(),'redemption'))
     flash('兑换已取消，积分已退回。'); return redirect(url_for('reward_orders'))
 @app.route('/account', methods=['GET','POST'])
 @login_required
@@ -704,7 +708,7 @@ def order(oid):
         c.execute('BEGIN IMMEDIATE'); o=c.execute('SELECT * FROM redemptions WHERE id=?',(oid,)).fetchone()
         if not o or o['status']!='pending': abort(400)
         c.execute('UPDATE redemptions SET status=? WHERE id=?',(status,oid))
-        if status=='rejected': c.execute('UPDATE rewards SET stock=stock+1 WHERE id=?',(o['reward_id'],)); c.execute('INSERT INTO ledger(user_id,amount,note,created) VALUES(?,?,?,?)',(o['user_id'],o['cost'],'兑换退回',now()))
+        if status=='rejected': c.execute('UPDATE rewards SET stock=stock+1 WHERE id=?',(o['reward_id'],)); c.execute('INSERT INTO ledger(user_id,amount,note,created,category) VALUES(?,?,?,?,?)',(o['user_id'],o['cost'],'兑换退回',now(),'redemption'))
     return redirect(url_for('admin',section='shop'))
 @app.post('/admin/exempt')
 @admin_required
@@ -804,7 +808,7 @@ def assistant_message():
     with db() as c:
         tasks=[dict(row) for row in c.execute('SELECT title,detail,kind,week FROM tasks WHERE deleted=0 AND week=? ORDER BY id LIMIT 40',(week(),))]
         records=[dict(row) for row in c.execute("SELECT coalesce(t.title,'自主训练') AS title,coalesce(t.week,substr(r.created,1,10)) AS week,r.sport,r.minutes,r.effort,r.status,r.level FROM records r LEFT JOIN tasks t ON t.id=r.task_id WHERE r.user_id=? ORDER BY r.id DESC LIMIT 20",(user['id'],))]
-        ranking=[dict(row) for row in c.execute("SELECT u.name,coalesce((SELECT sum(amount) FROM ledger WHERE user_id=u.id),0) points,(SELECT count(DISTINCT r.task_id) FROM records r JOIN tasks t ON t.id=r.task_id WHERE r.user_id=u.id AND r.status='approved' AND t.week=?) done FROM users u WHERE u.active=1 ORDER BY points DESC LIMIT 50",(week(),))]
+        ranking=[dict(row) for row in c.execute("SELECT u.name,coalesce((SELECT sum(amount) FROM ledger WHERE user_id=u.id AND category='training'),0) points,(SELECT count(DISTINCT r.task_id) FROM records r JOIN tasks t ON t.id=r.task_id WHERE r.user_id=u.id AND r.status='approved' AND t.week=?) done FROM users u WHERE u.active=1 ORDER BY points DESC LIMIT 50",(week(),))]
     try:
         history=json.loads(request.form.get('history','[]'))
         if not isinstance(history,list) or len(history)>12: raise ValueError()
