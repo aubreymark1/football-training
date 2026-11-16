@@ -389,7 +389,7 @@ class Flow(unittest.TestCase):
    self.assertEqual((row['status'],row['points_awarded']),('approved',5))
    self.assertEqual(c.execute('SELECT sum(amount) FROM ledger WHERE user_id=?',(uid,)).fetchone()[0],5)
   self.assertEqual(self.post('/admin/free/%d/review'%rid,{'action':'approved','points':'5'}).status_code,400)
-  self.assertIn('自主训练 +5 分',member.get('/history').get_data(as_text=True))
+  self.assertIn('本次 +5 分',member.get('/history').get_data(as_text=True))
   img2=io.BytesIO(); Image.new('RGB',(5,5)).save(img2,'PNG'); img2.seek(0)
   self.post('/free',{'sport':'慢跑','minutes':'20','effort':'5','image':(img2,'f2.png')},member)
   with m.db() as c: rid2=c.execute("SELECT id FROM records WHERE task_id IS NULL AND id<>?",(rid,)).fetchone()[0]
