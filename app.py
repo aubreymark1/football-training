@@ -73,6 +73,7 @@ def init():
         if 'real_name' not in cols: c.execute('ALTER TABLE users ADD COLUMN real_name TEXT')
         # 旧账号没有可靠入队日期，保留原有结算范围；新账号明确记录加入周。
         if 'joined_week' not in cols: c.execute('ALTER TABLE users ADD COLUMN joined_week TEXT')
+        c.execute("INSERT OR IGNORE INTO app_settings(key,value) VALUES('legacy_penalty_start_week',?)",(week(),))
         if 'points_awarded' not in {r['name'] for r in c.execute('PRAGMA table_info(records)')}: c.execute('ALTER TABLE records ADD COLUMN points_awarded INTEGER NOT NULL DEFAULT 0')
         if 'suspect' not in {r['name'] for r in c.execute('PRAGMA table_info(records)')}: c.execute('ALTER TABLE records ADD COLUMN suspect INTEGER NOT NULL DEFAULT 0')
         if 'suspect_reason' not in {r['name'] for r in c.execute('PRAGMA table_info(records)')}: c.execute('ALTER TABLE records ADD COLUMN suspect_reason TEXT')
@@ -99,10 +100,11 @@ def settle_required_penalties():
         finished=[r['week'] for r in c.execute("SELECT DISTINCT week FROM tasks WHERE deleted=0 AND week<? ORDER BY week",(week(),))]
         if not finished: return
         c.execute('BEGIN IMMEDIATE')
+        legacy_start=c.execute("SELECT value FROM app_settings WHERE key='legacy_penalty_start_week'").fetchone()['value']
         for wk in finished:
             required=[r['id'] for r in c.execute("SELECT id FROM tasks WHERE deleted=0 AND week=? AND kind='required'",(wk,))]
             if not required: continue
-            members=[r['id'] for r in c.execute('SELECT id FROM users WHERE deleted=0 AND active=1 AND (joined_week IS NULL OR joined_week<=?)',(wk,))]
+            members=[r['id'] for r in c.execute('SELECT id FROM users WHERE deleted=0 AND active=1 AND (COALESCE(joined_week,?)<=?)',(legacy_start,wk))]
             for uid in members:
                 if c.execute("SELECT 1 FROM weekly_settlements WHERE week=? AND user_id=? AND kind='missed_required'",(wk,uid)).fetchone():
                     refund_exempt_penalty(c,uid,wk)
@@ -435,7 +437,7 @@ def admin(section=None):
     scope={'pending':"WHERE r.status='pending' ",'done':"WHERE r.status<>'pending' ",'all':''}[view]
     with db() as c:
         records=c.execute("SELECT r.*,CASE WHEN u.deleted=1 THEN '已注销队员' ELSE u.name END AS name,u.real_name,coalesce(t.title,'自主训练') AS title,coalesce(t.kind,'free') AS kind,t.points,t.cap,coalesce(t.week,substr(r.created,1,10)) AS week,(t.id IS NOT NULL AND date(substr(r.created,1,10))>=date(t.week,'+7 days')) AS late FROM records r JOIN users u ON u.id=r.user_id LEFT JOIN tasks t ON t.id=r.task_id "+scope+"ORDER BY r.id DESC LIMIT 100").fetchall()
-        tasks=c.execute('SELECT * FROM tasks WHERE deleted=0 ORDER BY week DESC,id DESC LIMIT 50').fetchall(); users=c.execute('SELECT id,name,role,active,email,email_verified,real_name FROM users WHERE deleted=0 ORDER BY name').fetchall(); rewards=c.execute('SELECT * FROM rewards WHERE deleted=0 ORDER BY id DESC').fetchall()
+        tasks=c.execute('SELECT * FROM tasks WHERE deleted=0 ORDER BY week DESC,id DESC LIMIT 50').fetchall(); users=c.execute('SELECT id,name,role,active,email,email_verified,real_name,joined_week FROM users WHERE deleted=0 ORDER BY name').fetchall(); rewards=c.execute('SELECT * FROM rewards WHERE deleted=0 ORDER BY id DESC').fetchall()
         orders=c.execute("SELECT x.*,CASE WHEN u.deleted=1 THEN '已注销队员' ELSE u.name END AS user_name,r.name reward_name FROM redemptions x JOIN users u ON u.id=x.user_id JOIN rewards r ON r.id=x.reward_id ORDER BY x.id DESC LIMIT 100").fetchall(); invites=c.execute("SELECT value AS code FROM app_settings WHERE key='team_invite'").fetchall()
         pending_records=c.execute("SELECT count(*) FROM records WHERE status='pending'").fetchone()[0]; pending_orders=c.execute("SELECT count(*) FROM redemptions WHERE status='pending'").fetchone()[0]
         pending_reminders=len(reminder_candidates(c,week()))
@@ -624,6 +626,29 @@ def member_active(uid):
         if user['role']=='admin': abort(403)
         c.execute('UPDATE users SET active=?,session_version=session_version+1 WHERE id=?',(int(action),uid))
     flash('成员状态已更新。'); return redirect(url_for('admin',section='members'))
+@app.post('/admin/member/<int:uid>/joined-week')
+@admin_required
+def member_joined_week(uid):
+    raw=textfield('joined_date',10)
+    try:
+        day=datetime.date.fromisoformat(raw)
+        if day>datetime.datetime.now(TZ).date(): raise ValueError()
+    except ValueError:
+        flash('请输入不晚于今天的实际入队日期。','error'); return redirect(url_for('admin',section='members'))
+    joined=(day-datetime.timedelta(days=day.weekday())).isoformat()
+    with db() as c:
+        c.execute('BEGIN IMMEDIATE')
+        if not c.execute('SELECT 1 FROM users WHERE id=? AND deleted=0',(uid,)).fetchone(): abort(404)
+        c.execute('UPDATE users SET joined_week=? WHERE id=?',(joined,uid))
+        # Correct only existing penalty rows, accounting for any prior exemption refund.
+        penalties=c.execute('SELECT DISTINCT substr(note,1,10) AS week FROM ledger WHERE user_id=? AND amount=? AND note LIKE ?', (uid,-MISSED_REQUIRED_PENALTY,'% 周未完成必做任务')).fetchall()
+        for row in penalties:
+            wk=row['week']; correction=wk+' 周入队时间更正'; exemption=wk+' 周必做已完成或免除，退回扣分'
+            original=c.execute('SELECT coalesce(sum(amount),0) FROM ledger WHERE user_id=? AND note IN (?,?)',(uid,wk+' 周未完成必做任务',exemption)).fetchone()[0]
+            prior=c.execute('SELECT coalesce(sum(amount),0) FROM ledger WHERE user_id=? AND note=?',(uid,correction)).fetchone()[0]
+            desired=-original if wk<joined else 0
+            if desired!=prior: c.execute('INSERT INTO ledger(user_id,amount,note,created) VALUES(?,?,?,?)',(uid,desired-prior,correction,now()))
+    flash('入队时间已保存，入队前已扣积分已核对；其他历史周将在结算时检查。'); return redirect(url_for('admin',section='members'))
 @app.post('/admin/member/<int:uid>/email')
 @admin_required
 def member_email(uid):
@@ -716,6 +741,8 @@ def order(oid):
         if status=='rejected': c.execute('UPDATE rewards SET stock=stock+1 WHERE id=?',(o['reward_id'],)); c.execute('INSERT INTO ledger(user_id,amount,note,created,category) VALUES(?,?,?,?,?)',(o['user_id'],o['cost'],'兑换退回',now(),'redemption'))
     return redirect(url_for('admin',section='shop'))
 def refund_exempt_penalty(c,uid,wk):
+    user=c.execute('SELECT joined_week FROM users WHERE id=?',(uid,)).fetchone()
+    if user and user['joined_week'] and wk<user['joined_week']: return
     if not c.execute('SELECT 1 FROM exemptions e JOIN tasks t ON t.id=e.task_id WHERE e.user_id=? AND t.week=?',(uid,wk)).fetchone(): return
     unresolved=c.execute("""SELECT 1 FROM tasks t WHERE t.week=? AND t.kind='required' AND t.deleted=0
         AND NOT EXISTS(SELECT 1 FROM records r WHERE r.task_id=t.id AND r.user_id=? AND r.status='approved')

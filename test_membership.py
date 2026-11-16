@@ -26,3 +26,23 @@ class Regression(unittest.TestCase):
         with m.db() as c:
             self.assertEqual(c.execute('SELECT sum(amount) FROM ledger WHERE user_id=?',(uid,)).fetchone()[0],-10)
             self.assertEqual(c.execute('SELECT count(*) FROM ledger WHERE user_id=?',(uid,)).fetchone()[0],1)
+
+    def test_legacy_member_is_not_charged_for_unknown_old_weeks(self):
+        prev=(dt.date.fromisoformat(m.week())-dt.timedelta(days=7)).isoformat()
+        with m.db() as c:
+            uid=c.execute("SELECT id FROM users WHERE name='coach'").fetchone()[0]
+            c.execute("INSERT INTO tasks(title,detail,week,kind) VALUES('旧任务','',?,'required')",(prev,))
+        m.settle_required_penalties()
+        with m.db() as c:self.assertEqual(c.execute('SELECT count(*) FROM ledger WHERE user_id=?',(uid,)).fetchone()[0],0)
+
+    def test_admin_confirmed_join_date_corrects_old_penalty_without_double_refund(self):
+        member=m.app.test_client();self.join_member(member);self.login('coach')
+        prev=(dt.date.fromisoformat(m.week())-dt.timedelta(days=7)).isoformat()
+        with m.db() as c:
+            uid=c.execute("SELECT id FROM users WHERE name='player'").fetchone()[0]
+            c.execute('UPDATE users SET joined_week=NULL WHERE id=?',(uid,))
+            c.execute('INSERT INTO ledger(user_id,amount,note,created) VALUES(?,?,?,?)',(uid,-10,prev+' 周未完成必做任务',m.now()))
+        for _ in range(2): self.post('/admin/member/%d/joined-week'%uid,{'joined_date':m.week()})
+        with m.db() as c:self.assertEqual(c.execute('SELECT sum(amount) FROM ledger WHERE user_id=?',(uid,)).fetchone()[0],0)
+        self.post('/admin/member/%d/joined-week'%uid,{'joined_date':prev})
+        with m.db() as c:self.assertEqual(c.execute('SELECT sum(amount) FROM ledger WHERE user_id=?',(uid,)).fetchone()[0],-10)
