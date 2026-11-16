@@ -998,8 +998,9 @@ def report(uid):
     w=textfield('week',10)
     try: datetime.date.fromisoformat(w)
     except ValueError: abort(400)
+    end=(datetime.date.fromisoformat(w)+datetime.timedelta(days=7)).isoformat()
     with db() as c:
-        rows=c.execute("SELECT coalesce(t.title,'自主训练') AS title,coalesce(t.kind,'free') AS kind,r.sport,r.minutes,r.effort,r.status,r.level,r.ai_text FROM records r LEFT JOIN tasks t ON t.id=r.task_id WHERE r.user_id=? AND coalesce(t.week,substr(r.created,1,10))=?",(uid,w)).fetchall()
+        rows=c.execute("SELECT coalesce(t.title,'自主训练') AS title,coalesce(t.kind,'free') AS kind,r.sport,r.minutes,r.effort,r.status,r.level,r.ai_text FROM records r LEFT JOIN tasks t ON t.id=r.task_id WHERE r.user_id=? AND (t.week=? OR (r.task_id IS NULL AND substr(r.created,1,10)>=? AND substr(r.created,1,10)<?))",(uid,w,w,end)).fetchall()
         task_state=c.execute("SELECT t.title,t.kind,EXISTS(SELECT 1 FROM records r WHERE r.task_id=t.id AND r.user_id=? AND r.status='approved') completed,EXISTS(SELECT 1 FROM exemptions e WHERE e.task_id=t.id AND e.user_id=?) exempt FROM tasks t WHERE t.deleted=0 AND t.week=?",(uid,uid,w)).fetchall()
     if not rows: flash('该周没有记录，无法生成报告。','error'); return redirect(url_for('admin',section='members'))
     try:
