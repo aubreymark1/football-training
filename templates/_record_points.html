@@ -1,0 +1,1 @@
+{% if r.status=='approved' %}<p class="tiny{% if r.earned_points>0 %} green{% endif %}">{% if r.task_kind=='required' %}必做任务不加分{% elif r.earned_points>0 %}本次 +{{ r.earned_points }} 分{% elif r.task_kind=='bonus' and not r.has_points_entry %}本次 +0 分 · 本周计分次数已满{% else %}本次 +0 分{% endif %}</p>{% endif %}

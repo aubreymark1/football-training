@@ -16,7 +16,7 @@
 <a class="secondary-link" href="{{ url_for('free_training') }}"><span>自主训练<small>自由上传，管理员酌情给分</small></span></a>
 </div><aside class="home-side">
 <div class="section-head" id="guide-records"><h2>最近记录</h2><a href="{{ url_for('history') }}">全部记录</a></div>
-<div class="card">{% for r in records %}<div class="listrow"><div><strong>{{ r.title }}</strong><p>{{ r.sport }}，{{ r.minutes }} 分钟，{{ r.created[5:10] }}</p>{% if r.review_note %}<p>审核备注：{{ r.review_note }}</p>{% endif %}{% if r.points_awarded %}<p class="tiny green">自主训练 +{{ r.points_awarded }} 分</p>{% endif %}</div><span class="status status-{{ r.status }}">{{ {'pending':'待审核','approved':'已通过','rejected':'未通过'}[r.status] }}</span></div>{% else %}<p class="muted">还没有记录。练完后从上面的任务提交第一条。</p>{% endfor %}</div>
+<div class="card">{% for r in records %}<div class="listrow"><div><strong>{{ r.title }}</strong><p>{{ r.sport }}，{{ r.minutes }} 分钟，{{ r.created[5:10] }}</p>{% if r.review_note %}<p>审核备注：{{ r.review_note }}</p>{% endif %}{% include '_record_points.html' %}</div><span class="status status-{{ r.status }}">{{ {'pending':'待审核','approved':'已通过','rejected':'未通过'}[r.status] }}</span></div>{% else %}<p class="muted">还没有记录。练完后从上面的任务提交第一条。</p>{% endfor %}</div>
 <a class="secondary-link" href="{{ url_for('history',section='reports') }}">我的周分析</a>
 <a class="secondary-link" href="{{ url_for('assistant_page') }}">问问训练助手</a>
 </aside></div>{% endblock %}

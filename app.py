@@ -326,7 +326,7 @@ def home():
     with db() as c:
         tasks=c.execute('''SELECT t.*, (SELECT count(*) FROM records r WHERE r.task_id=t.id AND r.user_id=? AND r.status='approved') done, (SELECT count(*) FROM records r WHERE r.task_id=t.id AND r.user_id=? AND r.status='pending') pending, EXISTS(SELECT 1 FROM exemptions e WHERE e.task_id=t.id AND e.user_id=?) exempt FROM tasks t WHERE t.deleted=0 AND week=? ORDER BY kind DESC,id''',(u['id'],u['id'],u['id'],w)).fetchall()
         points=c.execute('SELECT coalesce(sum(amount),0) FROM ledger WHERE user_id=?',(u['id'],)).fetchone()[0]
-        records=c.execute("SELECT r.*,coalesce(t.title,'自主训练') AS title FROM records r LEFT JOIN tasks t ON t.id=r.task_id WHERE r.user_id=? ORDER BY r.id DESC LIMIT 5",(u['id'],)).fetchall()
+        records=c.execute("SELECT r.*,coalesce(l.amount,0) AS earned_points,(l.id IS NOT NULL) AS has_points_entry,coalesce(t.kind,'free') AS task_kind,coalesce(t.title,'自主训练') AS title FROM records r LEFT JOIN tasks t ON t.id=r.task_id LEFT JOIN ledger l ON l.record_id=r.id WHERE r.user_id=? ORDER BY r.id DESC LIMIT 5",(u['id'],)).fetchall()
         report=c.execute('SELECT * FROM reports WHERE user_id=? ORDER BY week DESC LIMIT 1',(u['id'],)).fetchone()
         strip=week_strip(c,u['id'])
     standings,_,_=team_standings()
@@ -635,7 +635,7 @@ def member_email(uid):
 @login_required
 def history(section=None):
     with db() as c:
-        records=c.execute("SELECT r.*,coalesce(t.title,'自主训练') AS title,coalesce(t.week,substr(r.created,1,10)) AS week FROM records r LEFT JOIN tasks t ON t.id=r.task_id WHERE r.user_id=? ORDER BY r.id DESC",(current()['id'],)).fetchall()
+        records=c.execute("SELECT r.*,coalesce(l.amount,0) AS earned_points,(l.id IS NOT NULL) AS has_points_entry,coalesce(t.kind,'free') AS task_kind,coalesce(t.title,'自主训练') AS title,coalesce(t.week,substr(r.created,1,10)) AS week FROM records r LEFT JOIN tasks t ON t.id=r.task_id LEFT JOIN ledger l ON l.record_id=r.id WHERE r.user_id=? ORDER BY r.id DESC",(current()['id'],)).fetchall()
         reports=c.execute('SELECT * FROM reports WHERE user_id=? ORDER BY week DESC',(current()['id'],)).fetchall()
         past_tasks=c.execute('SELECT * FROM tasks WHERE deleted=0 AND week<? ORDER BY week DESC,id DESC LIMIT 100',(week(),)).fetchall()
         trend=training_trend(c,current()['id'])
