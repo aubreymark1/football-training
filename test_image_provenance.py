@@ -1,4 +1,4 @@
-import io,unittest
+import io,unittest,struct,zlib
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 import image_forensics
@@ -11,6 +11,12 @@ class ProvenanceTests(unittest.TestCase):
     def test_dimensions_and_brand_mentions_are_not_generation_evidence(self):
         self.assertEqual(image_forensics.inspect_upload(self.image())[0],0)
         self.assertEqual(image_forensics.inspect_upload(self.image(Comment='讨论 OpenAI 和 ChatGPT 的截图'))[0],0)
+    def test_cabx_chunk_detected_even_when_pillow_omits_it(self):
+        data=self.image(); payload=b'example provenance payload'; tag=b'caBX'
+        chunk=struct.pack('>I',len(payload))+tag+payload+struct.pack('>I',zlib.crc32(tag+payload))
+        level,reason=image_forensics.inspect_upload(data[:33]+chunk+data[33:])
+        self.assertEqual(level,1);self.assertIn('不能',reason)
+
     def test_provenance_is_only_a_neutral_hint(self):
         level,reason=image_forensics.inspect_upload(self.image(c2pa='manifest'))
         self.assertEqual(level,1)
