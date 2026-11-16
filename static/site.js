@@ -52,6 +52,23 @@
     const error = $('.form-error', form);
     const idle = { name: name.textContent, meta: meta.textContent };
     let preview = '';
+    let selectionVersion = 0;
+    let processing = false;
+    const submit = $('button.primary', form);
+    const submitLabel = submit.textContent;
+
+    function processingImage(on) {
+      processing = on;
+      submit.disabled = on;
+      submit.textContent = on ? '图片处理中…' : submitLabel;
+    }
+
+    form.addEventListener('submit', (event) => {
+      if (!processing) return;
+      event.preventDefault();
+      error.textContent = '图片正在处理，请稍等。';
+      error.hidden = false;
+    });
 
     function show(file, note) {
       if (preview) URL.revokeObjectURL(preview);
@@ -63,25 +80,34 @@
     }
 
     input.addEventListener('change', async () => {
+      const version = ++selectionVersion;
+      processingImage(false);
       error.hidden = true;
       let file = input.files[0];
       if (!file) { show(null); return; }
       let note = '';
       if (file.size > UPLOAD_LIMIT) {
+        processingImage(true);
+        show(file, '，正在缩小');
         try {
           const transfer = new DataTransfer();
           file = await shrink(file);
+          if (version !== selectionVersion) return;
           transfer.items.add(file);
           input.files = transfer.files;
           note = '（原图太大，已缩小）';
         } catch (e) {
+          if (version !== selectionVersion) return;
           input.value = '';
           show(null);
           error.textContent = '这张图片超过 8MB，没法上传。换一张，或先裁剪一下再选。';
           error.hidden = false;
           return;
+        } finally {
+          if (version === selectionVersion) processingImage(false);
         }
       }
+      error.hidden = true;
       show(file, note);
     });
     if (input.files && input.files[0]) show(input.files[0]);
