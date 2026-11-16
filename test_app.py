@@ -322,6 +322,7 @@ class Flow(unittest.TestCase):
   self.post('/admin/task',{'title':'上周慢跑','detail':'','week':prev,'kind':'required','points':'0','cap':'1'})
   with m.db() as c:
    tid=c.execute('SELECT id FROM tasks WHERE week=?',(prev,)).fetchone()[0]; uid=c.execute("SELECT id FROM users WHERE name='player'").fetchone()[0]
+   c.execute('UPDATE users SET joined_week=? WHERE id=?',(prev,uid))
   self.assertEqual(self.client.get('/team').status_code,200)
   with m.db() as c: self.assertEqual([r['amount'] for r in c.execute('SELECT amount FROM ledger WHERE user_id=?',(uid,))],[-10])
   self.client.get('/team'); self.client.get('/admin')
@@ -498,6 +499,7 @@ class Flow(unittest.TestCase):
   with m.db() as c:
    tid=c.execute("SELECT id FROM tasks WHERE week=?",(prev,)).fetchone()[0]
    uid=c.execute("SELECT id FROM users WHERE name='waiter'").fetchone()[0]
+   c.execute('UPDATE users SET joined_week=? WHERE id=?',(prev,uid))
    c.execute("INSERT INTO records(user_id,task_id,sport,minutes,effort,note,image,created,status) VALUES(?,?,?,?,?,?,?,?,'pending')",(uid,tid,'跑步',30,6,'','x.jpg',m.now()))
   self.client.get('/team')
   with m.db() as c:
@@ -512,6 +514,7 @@ class Flow(unittest.TestCase):
   two=m.app.test_client(); self.join_member(two,'refused')
   with m.db() as c:
    uid2=c.execute("SELECT id FROM users WHERE name='refused'").fetchone()[0]
+   c.execute('UPDATE users SET joined_week=? WHERE id=?',(prev,uid2))
    c.execute("INSERT INTO records(user_id,task_id,sport,minutes,effort,note,image,created,status) VALUES(?,?,?,?,?,?,?,?,'pending')",(uid2,tid,'跑步',20,5,'','y.jpg',m.now()))
   self.client.get('/team')
   with m.db() as c:
