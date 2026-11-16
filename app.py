@@ -71,6 +71,8 @@ def init():
         if 'deleted' not in cols: c.execute('ALTER TABLE users ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0')
         if 'tour_seen' not in cols: c.execute('ALTER TABLE users ADD COLUMN tour_seen INTEGER NOT NULL DEFAULT 0')
         if 'real_name' not in cols: c.execute('ALTER TABLE users ADD COLUMN real_name TEXT')
+        # 旧账号没有可靠入队日期，保留原有结算范围；新账号明确记录加入周。
+        if 'joined_week' not in cols: c.execute('ALTER TABLE users ADD COLUMN joined_week TEXT')
         if 'points_awarded' not in {r['name'] for r in c.execute('PRAGMA table_info(records)')}: c.execute('ALTER TABLE records ADD COLUMN points_awarded INTEGER NOT NULL DEFAULT 0')
         if 'suspect' not in {r['name'] for r in c.execute('PRAGMA table_info(records)')}: c.execute('ALTER TABLE records ADD COLUMN suspect INTEGER NOT NULL DEFAULT 0')
         if 'suspect_reason' not in {r['name'] for r in c.execute('PRAGMA table_info(records)')}: c.execute('ALTER TABLE records ADD COLUMN suspect_reason TEXT')
@@ -93,10 +95,10 @@ def settle_required_penalties():
         finished=[r['week'] for r in c.execute("SELECT DISTINCT week FROM tasks WHERE deleted=0 AND week<? ORDER BY week",(week(),))]
         if not finished: return
         c.execute('BEGIN IMMEDIATE')
-        members=[r['id'] for r in c.execute('SELECT id FROM users WHERE deleted=0 AND active=1')]
         for wk in finished:
             required=[r['id'] for r in c.execute("SELECT id FROM tasks WHERE deleted=0 AND week=? AND kind='required'",(wk,))]
             if not required: continue
+            members=[r['id'] for r in c.execute('SELECT id FROM users WHERE deleted=0 AND active=1 AND (joined_week IS NULL OR joined_week<=?)',(wk,))]
             for uid in members:
                 if c.execute("SELECT 1 FROM weekly_settlements WHERE week=? AND user_id=? AND kind='missed_required'",(wk,uid)).fetchone(): continue
                 missed=False; deferred=False
@@ -314,7 +316,7 @@ def join():
                 c.execute('BEGIN IMMEDIATE')
                 if not c.execute("SELECT 1 FROM app_settings WHERE key='team_invite' AND value=?",(invite,)).fetchone():flash('邀请码无效。','error');return redirect(url_for('join'))
                 if not verify_email_code(c,'register',email,code):flash('验证码无效或已过期，请重新获取。','error');return redirect(url_for('join'))
-                uid=c.execute('INSERT INTO users(name,real_name,password,email,email_verified) VALUES(?,?,?,?,1)',(name,real_name,generate_password_hash(password),email)).lastrowid
+                uid=c.execute('INSERT INTO users(name,real_name,password,email,email_verified,joined_week) VALUES(?,?,?,?,1,?)',(name,real_name,generate_password_hash(password),email,week())).lastrowid
         except sqlite3.IntegrityError:flash('昵称或邮箱已被使用。','error');return redirect(url_for('join'))
         session.clear();session['uid']=uid;session['version']=0;session.permanent=True;return redirect(url_for('home'))
     return render_template('login.html',join=True)
@@ -1007,7 +1009,7 @@ if __name__=='__main__':
         if not a.name: p.error('--name required')
         pw=getpass.getpass('管理员密码（至少 10 位）：')
         if len(pw)<10: raise SystemExit('密码过短')
-        with db() as c: c.execute('INSERT INTO users(name,password,role) VALUES(?,?,?)',(a.name,generate_password_hash(pw),'admin'))
+        with db() as c: c.execute('INSERT INTO users(name,password,role,joined_week) VALUES(?,?,?,?)',(a.name,generate_password_hash(pw),'admin',week()))
         print('管理员已创建')
     else: app.run(host='127.0.0.1',port=5050,debug=False)
 else: init()
