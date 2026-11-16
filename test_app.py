@@ -449,12 +449,12 @@ class Flow(unittest.TestCase):
  def test_image_forensics_levels(self):
   import image_forensics
   clean=io.BytesIO(); Image.new('RGB',(1080,2400)).save(clean,'PNG'); self.assertEqual(image_forensics.inspect_upload(clean.getvalue())[0],0)
-  weak=io.BytesIO(); Image.new('RGB',(1024,1024)).save(weak,'PNG'); self.assertEqual(image_forensics.inspect_upload(weak.getvalue())[0],1)
+  weak=io.BytesIO(); Image.new('RGB',(1024,1024)).save(weak,'PNG'); self.assertEqual(image_forensics.inspect_upload(weak.getvalue())[0],0)
   from PIL.PngImagePlugin import PngInfo
   info=PngInfo(); info.add_text('c2pa','manifest')
   strong=io.BytesIO(); Image.new('RGB',(800,1200)).save(strong,'PNG',pnginfo=info)
   level,reason=image_forensics.inspect_upload(strong.getvalue())
-  self.assertEqual(level,2); self.assertIn('C2PA',reason)
+  self.assertEqual(level,1); self.assertIn('不能判断',reason)
   self.assertEqual(image_forensics.inspect_upload(b'not an image')[0],0)
  def test_submission_flags_ai_metadata(self):
   member=m.app.test_client(); self.join_member(member)
@@ -465,9 +465,9 @@ class Flow(unittest.TestCase):
   buf=io.BytesIO(); Image.new('RGB',(900,1600)).save(buf,'PNG',pnginfo=info); buf.seek(0)
   self.post('/submit/'+str(tid),{'sport':'跑步','minutes':'30','effort':'6','image':(buf,'fake.png')},member)
   with m.db() as c: row=c.execute('SELECT suspect,suspect_reason FROM records ORDER BY id DESC').fetchone()
-  self.assertEqual(row['suspect'],2); self.assertTrue(row['suspect_reason'])
+  self.assertEqual(row['suspect'],1); self.assertTrue(row['suspect_reason'])
   page=self.client.get('/admin/review').get_data(as_text=True)
-  self.assertIn('高度疑似 AI 生成',page); self.assertIn('确认是真实截图',page)
+  self.assertIn('来源信息待核对',page); self.assertIn('已核对，清除提示',page)
   with m.db() as c: rid=c.execute('SELECT id FROM records ORDER BY id DESC').fetchone()[0]
   self.post('/admin/record/%d/clear-ai'%rid,{})
   with m.db() as c: self.assertEqual(c.execute('SELECT suspect FROM records WHERE id=?',(rid,)).fetchone()[0],0)

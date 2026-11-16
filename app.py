@@ -74,6 +74,8 @@ def init():
         if 'points_awarded' not in {r['name'] for r in c.execute('PRAGMA table_info(records)')}: c.execute('ALTER TABLE records ADD COLUMN points_awarded INTEGER NOT NULL DEFAULT 0')
         if 'suspect' not in {r['name'] for r in c.execute('PRAGMA table_info(records)')}: c.execute('ALTER TABLE records ADD COLUMN suspect INTEGER NOT NULL DEFAULT 0')
         if 'suspect_reason' not in {r['name'] for r in c.execute('PRAGMA table_info(records)')}: c.execute('ALTER TABLE records ADD COLUMN suspect_reason TEXT')
+        # 移除旧启发式产生的误报，不改变训练记录的审核结果。
+        c.execute("UPDATE records SET suspect=0,suspect_reason=NULL WHERE suspect_reason=? OR suspect_reason LIKE ?",('文件带有 C2PA 内容凭证或 OpenAI 出图标记，基本可确认由 AI 生成','图片尺寸与 AI 出图规格一致，可能是生成图%'))
         c.execute('CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users(lower(email)) WHERE email IS NOT NULL AND deleted=0')
         for table in ('tasks','rewards'):
             if 'deleted' not in {r['name'] for r in c.execute('PRAGMA table_info('+table+')')}: c.execute('ALTER TABLE '+table+' ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0')
