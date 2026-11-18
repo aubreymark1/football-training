@@ -41,6 +41,8 @@ def init():
     CREATE TABLE IF NOT EXISTS invites(code TEXT PRIMARY KEY, used_by INTEGER REFERENCES users(id));
     CREATE TABLE IF NOT EXISTS app_settings(key TEXT PRIMARY KEY, value TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS email_codes(session_id TEXT NOT NULL, purpose TEXT NOT NULL, user_id INTEGER, email TEXT NOT NULL, digest TEXT NOT NULL, expires INTEGER NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, sent_at INTEGER NOT NULL, state TEXT NOT NULL, PRIMARY KEY(session_id,purpose));
+    CREATE TABLE IF NOT EXISTS passkeys(id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id), credential_id TEXT NOT NULL UNIQUE, public_key BLOB NOT NULL, sign_count INTEGER NOT NULL, label TEXT NOT NULL, created TEXT NOT NULL, last_used TEXT);
+    CREATE TABLE IF NOT EXISTS passkey_challenges(token TEXT PRIMARY KEY, purpose TEXT NOT NULL, challenge BLOB NOT NULL, user_id INTEGER, session_version INTEGER, expires INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS email_dispatches(email_key TEXT NOT NULL, ip_key TEXT NOT NULL, sent_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS reminder_sends(week TEXT NOT NULL, user_id INTEGER NOT NULL REFERENCES users(id), sent_at TEXT NOT NULL, status TEXT NOT NULL, PRIMARY KEY(week,user_id));
     CREATE TABLE IF NOT EXISTS tasks(id INTEGER PRIMARY KEY, title TEXT NOT NULL, detail TEXT NOT NULL, week TEXT NOT NULL, kind TEXT NOT NULL, points INTEGER NOT NULL DEFAULT 0, cap INTEGER NOT NULL DEFAULT 2);
@@ -302,6 +304,7 @@ def reset_password():
                 flash('信息或验证码无效，或验证码已过期。','error'); return redirect(url_for('reset_password'))
             c.execute('UPDATE users SET password=?,session_version=session_version+1 WHERE id=?',(generate_password_hash(password),user['id']))
             c.execute("UPDATE email_codes SET state='used' WHERE purpose='reset_password' AND user_id=?",(user['id'],))
+            c.execute('DELETE FROM passkeys WHERE user_id=?',(user['id'],))
         session.clear(); flash('密码已重置，你的登录昵称为：'+user['name']+'。请使用新密码登录。'); return redirect(url_for('login'))
     return render_template('reset_password.html')
 
@@ -599,7 +602,10 @@ def account():
         if not 10<=len(new)<=128 or new!=confirm: flash('新密码需为 10–128 位，两次输入须一致。','error'); return redirect(url_for('account'))
         with db() as c: c.execute('UPDATE users SET password=?,session_version=session_version+1 WHERE id=?',(generate_password_hash(new),current()['id']))
         session.clear(); flash('密码已修改，请重新登录。'); return redirect(url_for('login'))
-    return render_template('account.html')
+    with db() as c: passkeys=c.execute('SELECT id,label,created,last_used FROM passkeys WHERE user_id=? ORDER BY id',(current()['id'],)).fetchall()
+    return render_template('account.html',passkeys=passkeys)
+import passkeys as passkey_module
+passkey_module.setup(app,db,current,login_required,now)
 @app.post('/account/real-name')
 @login_required
 def account_real_name():

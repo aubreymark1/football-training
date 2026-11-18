@@ -19,7 +19,7 @@
 - **训练记录**：查看每周任务，提交训练时长、感受和截图，回顾历史记录。
 - **球队与积分**：查看球队排名和积分，并使用积分兑换奖励。
 - **管理**：发布任务、审核训练记录、管理成员和奖励。
-- **账号**：使用邀请码和邮箱验证码注册；通过真实姓名及已验证邮箱找回账号并重置密码。
+- **账号**：使用邀请码和邮箱验证码注册；通过真实姓名及已验证邮箱找回账号并重置密码。已登录用户可在账号设置中验证密码后添加或移除通行密钥。
 - **训练助手**：提供球队问答和 AI 辅助功能；AI 功能需要另行配置服务。
 
 ## 本地运行
@@ -34,16 +34,16 @@ python app.py init-admin --name 管理员昵称
 python app.py serve
 ```
 
-创建管理员时按提示输入密码。启动后访问 <http://127.0.0.1:5050/>。开发服务器仅供本地使用。
+创建管理员时按提示输入密码。启动后访问 <http://127.0.0.1:5050/>。开发服务器仅供本地使用。本地测试通行密钥时请使用 `http://localhost:5050/`，与默认的通行密钥验证地址保持一致。
 
-邮件验证需要配置 `TEAM_SMTP_USER`、`TEAM_SMTP_PASSWORD` 和 `TEAM_SMTP_FROM`。生产环境还需要设置足够长且随机的 `TEAM_SECRET`，配置示例见 [deploy/environment-example.env](deploy/environment-example.env)。真实密码、授权码和 API Key 应保存在环境变量或受保护的配置文件中。
+邮件验证需要配置 `TEAM_SMTP_USER`、`TEAM_SMTP_PASSWORD` 和 `TEAM_SMTP_FROM`。生产环境还需要设置足够长且随机的 `TEAM_SECRET`，配置示例见 [deploy/environment-example.env](deploy/environment-example.env)。真实密码、授权码和 API Key 应保存在环境变量或受保护的配置文件中。通行密钥在生产环境中需要 HTTPS，并通过 `TEAM_PUBLIC_URL` 配置用户实际访问的网站地址；更换域名后，原域名下的通行密钥不能直接用于新域名。
 
 ## 数据与测试
 
 SQLite 数据库、训练截图、球队问答语料和服务器连接资料未提交到仓库。缺少问答语料时，相关检索功能及依赖语料的测试不可用。
 
 ```powershell
-python -m unittest test_app
+python -m unittest test_app test_passkeys
 ```
 
 ## 技术栈
