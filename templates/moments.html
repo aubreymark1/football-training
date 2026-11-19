@@ -1,0 +1,31 @@
+{% extends 'base.html' %}{% block title %}Moments · 岭足{% endblock %}{% block content %}
+<link rel="stylesheet" href="{{ url_for('static',filename='moments.css') }}">
+<div class="moments-page">
+  <header class="moments-header"><h1>Moments</h1><img src="{{ url_for('static',filename='brand/logo-96.png') }}" alt="" width="50" height="50"></header>
+  <div class="moments-feed" aria-label="球队训练动态">
+  {% for post in posts %}
+    <article class="moment" id="moment-{{ post.id }}">
+      <div class="moment-avatar" aria-hidden="true"><img src="{{ url_for('avatar_image',uid=post.user_id) }}" alt="" width="40" height="40" loading="lazy"></div>
+      <div class="moment-body">
+        <div class="moment-author">{{ post.author }}</div>
+        <p class="moment-training"><strong>{{ post.title }}</strong> · {{ post.sport }} · {{ post.minutes }} 分钟</p>
+        {% if post.note %}<p class="moment-note">{{ post.note }}</p>{% endif %}
+        <a class="moment-image" href="{{ url_for('moments_image',rid=post.id) }}" data-zoom aria-label="查看{{ post.author }}的训练截图"><img src="{{ url_for('moments_image',rid=post.id,thumb=1) }}" loading="lazy" decoding="async" alt="{{ post.author }}的训练截图"></a>
+        <div class="moment-meta"><time datetime="{{ post.created }}">{{ post.created[5:16]|replace('T',' ') }}</time>
+          {% if post.user_id==me.id or me.role=='admin' %}<form method="post" action="{{ url_for('moments_hide',rid=post.id) }}" data-confirm="从 Moments 隐藏这条动态？训练记录会保留。" data-confirm-action="隐藏"><input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="before" value="{{ before }}"><button class="moment-hide" type="submit">隐藏</button></form>{% endif %}
+          <details class="moment-actions"><summary aria-label="动态操作"><svg viewBox="0 0 18 4" width="18" height="4" aria-hidden="true"><circle cx="3" cy="2" r="1.5"/><circle cx="9" cy="2" r="1.5"/><circle cx="15" cy="2" r="1.5"/></svg></summary><div class="moment-menu"><form method="post" action="{{ url_for('moments_like',rid=post.id) }}"><input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="before" value="{{ before }}"><button type="submit" aria-label="{{ '取消点赞' if post.liked else '点赞' }}">{{ '♥ 取消' if post.liked else '♡ 赞' }}</button></form><a href="#comment-{{ post.id }}" data-comment-open="comment-{{ post.id }}">评论</a></div></details>
+        </div>
+        {% if like_names[post.id] or comments[post.id] %}<div class="moment-interactions">
+          {% if like_names[post.id] %}<p class="moment-likes"><span aria-hidden="true">♡</span> {{ like_names[post.id]|join('，') }}</p>{% endif %}
+          {% for comment in comments[post.id] %}<div class="moment-comment"><p><strong>{{ comment.author }}：</strong>{{ comment.content }}</p>{% if comment.user_id==me.id or me.role=='admin' %}<form method="post" action="{{ url_for('moments_comment_delete',rid=post.id,comment_id=comment.id) }}" data-confirm="删除这条评论？" data-confirm-action="删除"><input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="before" value="{{ before }}"><button type="submit" aria-label="删除评论">删除</button></form>{% endif %}</div>{% endfor %}
+        </div>{% endif %}
+        <div class="moment-comment-box" id="comment-{{ post.id }}"><form method="post" action="{{ url_for('moments_comment',rid=post.id) }}" data-lock="发送中"><input type="hidden" name="csrf" value="{{ csrf_token }}"><input type="hidden" name="before" value="{{ before }}"><label class="sr-only" for="comment-input-{{ post.id }}">评论内容</label><input id="comment-input-{{ post.id }}" name="content" maxlength="300" required placeholder="和队友说点什么"><button type="submit" class="smallbtn">发送</button></form></div>
+      </div>
+    </article>
+  {% else %}<div class="moments-empty"><strong>这里还没有动态</strong><p>提交训练记录后，新的 Moments 就会出现在这里。</p><a class="outline" href="{{ url_for('home') }}">去训练</a></div>{% endfor %}
+  </div>
+  {% if next_before %}<a class="moments-more outline" href="{{ url_for('moments_feed',before=next_before) }}">查看更早的动态</a>{% endif %}
+  {% if before %}<a class="moments-more" href="{{ url_for('moments_feed') }}">返回最新动态</a>{% endif %}
+</div>
+<script src="{{ url_for('static',filename='moments.js') }}" defer></script>
+{% endblock %}

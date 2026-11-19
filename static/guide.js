@@ -7,8 +7,7 @@
     { title: '第 2 步 · 提交训练记录', body: '练完点任务右侧的「去提交」，选择运动类型、填写时长和主观用力，再上传截图。管理员审核通过后才算完成。', target: '.required-block .task-go, .home-grid .module, #guide-records' },
     { title: '第 3 步 · 积分商城', body: '底部「积分」里可以用积分兑换球队礼品，申请后由管理员线下交付。', target: '#guide-nav-rewards' },
     { title: '第 4 步 · 球队概览', body: '「球队」页有积分排名。排名后 20% 会被标出来，当周需要额外完成 1 项附加训练。', target: '#guide-nav-team' },
-    { title: '第 5 步 · 训练助手', body: '「助手」里可以问训练安排和球队信息。训练类问题会自动检索资料和视频，也可以开启深度思考。', target: '#guide-nav-assistant' },
-    { title: '第 6 步 · 可以开始了', body: '完成训练后记得提交记录。想再看一遍，可以在「账号」里重新打开这个引导。', target: '' }
+    { title: '第 5 步 · 可以开始了', body: '完成训练后记得提交记录。想再看一遍，可以在「账号」里重新打开这个引导。', target: '' }
   ];
 
   let index = 0;

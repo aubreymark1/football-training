@@ -1,8 +1,17 @@
 {% extends 'base.html' %}{% block main_class %}wide{% endblock %}{% block content %}
+<link rel="stylesheet" href="{{ url_for('static',filename='league.css') }}">
 {% set todo=required|rejectattr('done')|rejectattr('exempt')|rejectattr('pending')|list|length %}{% set waiting=required|length - required_done - todo %}
+<section class="fixture-card" aria-label="南校联赛赛程">
+  <div class="fixture-heading"><div><p>2026–2027 南校联赛</p><h2>下一场比赛</h2></div><span>岭南学院</span></div>
+  {% if fixtures %}{% set game=fixtures[0] %}
+  <div class="fixture-main"><div class="fixture-date"><time datetime="{{ game.date }}">{{ game.date[5:7]|int }}<small>月</small>{{ game.date[8:10]|int }}<small>日</small></time><span>{{ game.time }} · 第{{ game.round }}轮</span></div><div class="fixture-teams"><strong>{{ game.home }}</strong><i>vs</i><strong>{{ game.away }}</strong><p>{{ game.venue }}</p></div></div>
+  {% if fixtures|length > 1 %}<details class="fixture-more"><summary>查看后续赛程 <span>{{ fixtures|length - 1 }} 场</span></summary><div>{% for game in fixtures[1:] %}<div class="fixture-row"><time datetime="{{ game.date }}">{{ game.date[0:4] }}.{{ game.date[5:7] }}.{{ game.date[8:10] }} <b>{{ game.time }}</b></time><span>{{ game.home }} <i>vs</i> {{ game.away }}</span></div>{% endfor %}</div></details>{% endif %}
+  {% else %}<p class="fixture-empty">暂无后续赛程</p>{% endif %}
+</section>
 <section class="board"><div class="board-head"><div><p class="board-range">{{ strip.range }}</p><h1>本周训练</h1></div><div class="board-points"><strong>{{ points }}</strong><span>我的积分</span></div></div>
 <p class="board-status{% if required and not todo and not waiting %} is-clear{% endif %}">{% if not required %}本周还没有必做任务{% if strip.trained %}，这周已经练了 <b>{{ strip.trained }}</b> 天{% endif %}{% elif todo %}必做还差 <b>{{ todo }}</b> 项没交，{% if strip.days_left %}离周日截止还有 <b>{{ strip.days_left }}</b> 天{% else %}今天 24:00 截止{% endif %}{% elif waiting %}必做已经提交，等管理员审核{% elif exempt_all %}本周必做已免除，好好休养{% else %}本周必做已完成 <b>{{ required_done }}/{{ required|length }}</b>{% endif %}</p>
 <ol class="track" style="--elapsed:{{ strip.elapsed }}" aria-label="本周打卡情况">{% for d in strip.days %}<li class="{{ 'on ' if d.trained }}{{ 'today ' if d.today }}{{ 'future ' if d.future }}{{ 'deadline' if loop.last }}" style="--i:{{ loop.index0 }}"><i></i><span>{{ '今天' if d.today else d.label }}</span>{% if d.trained %}<span class="sr-only">已训练</span>{% endif %}</li>{% endfor %}</ol></section>
+{% if plans_enabled %}<a class="secondary-link" href="{{ url_for('team_plans_list') }}"><span>球队训练计划<small>查看集合安排、训练步骤和战术板</small></span></a>{% endif %}
 {% if not me.real_name %}<div class="notice warn-notice" style="margin:12px 0 0"><span>还没填真实姓名，球队页里队友认不出你。</span><a href="{{ url_for('account') }}">去填写</a></div>{% endif %}
 {% if standing and standing.bottom %}<div class="notice warn-notice" style="margin:12px 0 0">你在球队训练积分后 20%，本周需额外完成 1 项附加训练（目前通过 {{ standing.bonus }} 项）。</div>{% endif %}
 <div class="home-grid"><div class="home-main">
@@ -18,5 +27,4 @@
 <div class="section-head" id="guide-records"><h2>最近记录</h2><a href="{{ url_for('history') }}">全部记录</a></div>
 <div class="card">{% for r in records %}<div class="listrow"><div><strong>{{ r.title }}</strong><p>{{ r.sport }}，{{ r.minutes }} 分钟，{{ r.created[5:10] }}</p>{% if r.review_note %}<p>审核备注：{{ r.review_note }}</p>{% endif %}{% include '_record_points.html' %}</div><span class="status status-{{ r.status }}">{{ {'pending':'待审核','approved':'已通过','rejected':'未通过'}[r.status] }}</span></div>{% else %}<p class="muted">还没有记录。练完后从上面的任务提交第一条。</p>{% endfor %}</div>
 <a class="secondary-link" href="{{ url_for('history',section='reports') }}">我的周分析</a>
-<a class="secondary-link" href="{{ url_for('assistant_page') }}">问问训练助手</a>
 </aside></div>{% endblock %}
