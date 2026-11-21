@@ -1,0 +1,10 @@
+[Unit]
+Description=Back up football training every two hours
+
+[Timer]
+OnCalendar=*-*-* 00/2:00:00
+Persistent=true
+Unit=football-auto-backup.service
+
+[Install]
+WantedBy=timers.target

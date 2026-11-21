@@ -5,7 +5,7 @@
   <div class="moments-feed" aria-label="球队训练动态">
   {% for post in posts %}
     <article class="moment" id="moment-{{ post.id }}">
-      <div class="moment-avatar" aria-hidden="true"><img src="{{ url_for('avatar_image',uid=post.user_id) }}" alt="" width="40" height="40" loading="lazy"></div>
+      <a class="moment-avatar" href="{{ url_for('avatar_image',uid=post.user_id) }}" data-zoom aria-label="查看{{ post.author }}的头像"><img src="{{ url_for('avatar_image',uid=post.user_id) }}" alt="" width="40" height="40" loading="lazy"></a>
       <div class="moment-body">
         <div class="moment-author">{{ post.author }}</div>
         <p class="moment-training"><strong>{{ post.title }}</strong> · {{ post.sport }} · {{ post.minutes }} 分钟</p>

@@ -5,6 +5,7 @@ import mail_service
 import image_forensics
 import moments
 import avatars
+import site_updates
 import hashlib, hmac
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -66,6 +67,10 @@ def init():
     CREATE TABLE IF NOT EXISTS team_training_plans(id INTEGER PRIMARY KEY, week TEXT NOT NULL UNIQUE, draft TEXT NOT NULL, published TEXT, revision INTEGER NOT NULL DEFAULT 0, updated_by INTEGER REFERENCES users(id), updated_at TEXT NOT NULL, published_at TEXT);
     ''')
     with db() as c:
+        c.execute('CREATE TABLE IF NOT EXISTS lottery_draws (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id), token TEXT NOT NULL UNIQUE, result TEXT NOT NULL, reward_id INTEGER REFERENCES rewards(id), created TEXT NOT NULL)')
+        c.execute('CREATE INDEX IF NOT EXISTS lottery_draws_user ON lottery_draws(user_id,id)')
+        c.execute('CREATE TABLE IF NOT EXISTS lottery_settings (user_id INTEGER PRIMARY KEY REFERENCES users(id), wish_reward_id INTEGER NOT NULL REFERENCES rewards(id))')
+    with db() as c:
         # Workers can start together; serialize the column checks and migrations.
         c.execute('BEGIN IMMEDIATE')
         moments.init_schema(c)
@@ -79,6 +84,7 @@ def init():
         if 'email_verified' not in cols: c.execute('ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0')
         if 'deleted' not in cols: c.execute('ALTER TABLE users ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0')
         if 'tour_seen' not in cols: c.execute('ALTER TABLE users ADD COLUMN tour_seen INTEGER NOT NULL DEFAULT 0')
+        if 'update_seen' not in cols: c.execute('ALTER TABLE users ADD COLUMN update_seen INTEGER NOT NULL DEFAULT 0')
         if 'real_name' not in cols: c.execute('ALTER TABLE users ADD COLUMN real_name TEXT')
         if 'is_captain' not in cols: c.execute('ALTER TABLE users ADD COLUMN is_captain INTEGER NOT NULL DEFAULT 0')
         # 旧账号没有可靠入队日期，保留原有结算范围；新账号明确记录加入周。
@@ -139,8 +145,11 @@ def team_standings():
     with db() as c:
         rows=[dict(r) for r in c.execute('''SELECT u.id,u.name,u.real_name,u.role,
             coalesce((SELECT sum(amount) FROM ledger WHERE user_id=u.id AND category='training'),0) points,
-            (SELECT count(DISTINCT r.task_id) FROM records r JOIN tasks t ON t.id=r.task_id WHERE r.user_id=u.id AND r.status='approved' AND t.week=? AND t.kind='required') done
-            FROM users u WHERE u.deleted=0 AND u.active=1 ORDER BY points DESC,done DESC,u.name''',(w,))]
+            (SELECT count(DISTINCT r.task_id) FROM records r JOIN tasks t ON t.id=r.task_id WHERE r.user_id=u.id AND r.status='approved' AND t.week=? AND t.kind='required') done,
+            (SELECT count(*) FROM tasks t WHERE t.week=? AND t.kind='required' AND t.deleted=0 AND
+              (EXISTS(SELECT 1 FROM records r WHERE r.user_id=u.id AND r.task_id=t.id AND r.status='approved')
+               OR EXISTS(SELECT 1 FROM exemptions e WHERE e.user_id=u.id AND e.task_id=t.id))) required_met
+            FROM users u WHERE u.deleted=0 AND u.active=1 ORDER BY points DESC,done DESC,u.name''',(w,w))]
         bonus={r['user_id']:r['n'] for r in c.execute("SELECT r.user_id,count(DISTINCT r.task_id) n FROM records r JOIN tasks t ON t.id=r.task_id WHERE t.week=? AND t.kind='bonus' AND r.status='approved' GROUP BY r.user_id",(w,))}
         required_total=c.execute("SELECT count(*) FROM tasks WHERE deleted=0 AND week=? AND kind='required'",(w,)).fetchone()[0]
     # 所有人积分与本周完成数都一样时没有区分度，暂不标注后 20%，避免随机点到人。
@@ -183,7 +192,7 @@ def training_trend(c,uid,weeks=8):
     return dict(series=series,streak=streak,top=top,ticks=[dict(value=n,at=round(n*100/top,2)) for n in range(step,top+1,step)],total_sessions=sum(n for _,n in totals.values()),total_minutes=sum(m for m,_ in totals.values()),week_minutes=series[-1]['minutes'],week_sessions=series[-1]['sessions'])
 def current():
     if not session.get('uid'): return None
-    with db() as c: user=c.execute('SELECT id,name,role,active,session_version,email,email_verified,deleted,tour_seen,real_name,is_captain FROM users WHERE id=?',(session['uid'],)).fetchone()
+    with db() as c: user=c.execute('SELECT id,name,role,active,session_version,email,email_verified,deleted,tour_seen,update_seen,real_name,is_captain FROM users WHERE id=?',(session['uid'],)).fetchone()
     if not user or not user['active'] or user['deleted'] or session.get('version') != user['session_version']:
         session.clear(); return None
     return user
@@ -369,7 +378,8 @@ def home():
     exempt_all=bool(required) and all(t['exempt'] for t in required)
     from league_schedule import upcoming_matches
     fixtures = upcoming_matches(datetime.datetime.now(TZ).date())
-    return render_template('home.html',tasks=tasks,required=required,modules=modules,has_bonus=any(items for _,_,items in modules),points=points,records=records,report=report,standing=mine,strip=strip,required_done=sum(1 for t in required if t['done'] or t['exempt']),exempt_all=exempt_all,fixtures=fixtures)
+    update_notice = site_updates.CURRENT if u['update_seen'] < site_updates.CURRENT['version'] else None
+    return render_template('home.html',tasks=tasks,required=required,modules=modules,has_bonus=any(items for _,_,items in modules),points=points,records=records,report=report,standing=mine,strip=strip,required_done=sum(1 for t in required if t['done'] or t['exempt']),exempt_all=exempt_all,fixtures=fixtures,update_notice=update_notice)
 @app.route('/submit/<int:tid>',methods=['GET','POST'])
 @login_required
 def submit(tid):
@@ -438,7 +448,7 @@ def image(rid):
 def rewards():
     settle_required_penalties()
     with db() as c:
-        items=c.execute('SELECT * FROM rewards WHERE deleted=0 ORDER BY id DESC').fetchall(); points=c.execute('SELECT coalesce(sum(amount),0) FROM ledger WHERE user_id=?',(current()['id'],)).fetchone()[0]
+        items=c.execute('SELECT * FROM rewards WHERE deleted=0 AND cost>0 ORDER BY id DESC').fetchall(); points=c.execute('SELECT coalesce(sum(amount),0) FROM ledger WHERE user_id=?',(current()['id'],)).fetchone()[0]
         orders=c.execute('SELECT x.*,r.name FROM redemptions x JOIN rewards r ON r.id=x.reward_id WHERE x.user_id=? ORDER BY x.id DESC',(current()['id'],)).fetchall()
     return render_template('rewards.html',items=items,points=points,orders=orders,show_orders=request.path.endswith('/orders'))
 @app.get('/rewards/orders')
@@ -451,7 +461,7 @@ def reward_orders():
 def redeem(rid):
     with db() as c:
         c.execute('BEGIN IMMEDIATE'); reward=c.execute('SELECT * FROM rewards WHERE id=? AND deleted=0',(rid,)).fetchone(); points=c.execute('SELECT coalesce(sum(amount),0) FROM ledger WHERE user_id=?',(current()['id'],)).fetchone()[0]
-        if not reward or reward['stock']<1 or points<reward['cost']: flash('积分不足或礼品已兑完。','error'); return redirect(url_for('rewards'))
+        if not reward or reward['cost']<1 or reward['stock']<1 or points<reward['cost']: flash('积分不足或礼品已兑完。','error'); return redirect(url_for('rewards'))
         c.execute('UPDATE rewards SET stock=stock-1 WHERE id=?',(rid,)); c.execute('INSERT INTO redemptions(user_id,reward_id,cost,created) VALUES(?,?,?,?)',(current()['id'],rid,reward['cost'],now())); c.execute('INSERT INTO ledger(user_id,amount,note,created,category) VALUES(?,?,?,?,?)',(current()['id'],-reward['cost'],'兑换 '+reward['name'],now(),'redemption'))
     flash('兑换申请已提交，请联系管理员领取。'); return redirect(url_for('reward_orders'))
 @app.get('/team')
@@ -615,7 +625,7 @@ def delete_reward(rid):
 @app.post('/admin/reward/<int:rid>/edit')
 @admin_required
 def reward_edit(rid):
-    name=textfield('name',100); cost=positive('cost',1,100000); stock=positive('stock',0,10000)
+    name=textfield('name',100); cost=positive('cost',0,100000); stock=positive('stock',0,10000)
     if not name: abort(400)
     with db() as c: c.execute('UPDATE rewards SET name=?,cost=?,stock=? WHERE id=?',(name,cost,stock,rid))
     flash('礼品已更新。'); return redirect(url_for('admin',section='shop'))
@@ -648,6 +658,14 @@ def account_real_name():
     if not real_name: flash('请填写真实姓名。','error'); return redirect(url_for('account'))
     with db() as c: c.execute('UPDATE users SET real_name=? WHERE id=?',(real_name,current()['id']))
     flash('真实姓名已更新。'); return redirect(url_for('account'))
+@app.post('/updates/acknowledge')
+@login_required
+def acknowledge_update():
+    version=request.form.get('version','')
+    if not version.isdigit() or not 0 < int(version) <= site_updates.CURRENT['version']: abort(400)
+    with db() as c:
+        c.execute('UPDATE users SET update_seen=max(update_seen,?) WHERE id=?',(int(version),current()['id']))
+    return redirect(url_for('home'))
 @app.post('/account/tour-seen')
 @login_required
 def tour_seen():
@@ -1103,6 +1121,8 @@ team_plans.register(app, db=db, current=current, login_required=login_required,
                     restricted_output=restricted_ai_output)
 moments.register(app, db=db, current=current, login_required=login_required, now=now, data=lambda: DATA)
 avatars.register(app, db=db, current=current, login_required=login_required, now=now)
+import lottery
+lottery.register(app, db=db, current=current, login_required=login_required, now=now, settle=settle_required_penalties)
 if __name__=='__main__':
     import argparse
     p=argparse.ArgumentParser(); p.add_argument('command',choices=['serve','init-admin']); p.add_argument('--name'); a=p.parse_args(); init()

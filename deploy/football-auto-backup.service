@@ -1,0 +1,8 @@
+[Unit]
+Description=Verified football training backup
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+ExecStart=/opt/football-training/.venv/bin/python /usr/local/libexec/football-auto-backup.py

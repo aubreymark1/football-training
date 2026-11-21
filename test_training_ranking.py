@@ -26,6 +26,21 @@ class Regression(unittest.TestCase):
         rows,_,_=m.team_standings();self.assertEqual(next(r['points'] for r in rows if r['id']==uid),30)
         with m.db() as c:self.assertEqual(c.execute('SELECT sum(amount) FROM ledger WHERE user_id=?',(uid,)).fetchone()[0],30)
 
+    def test_exemption_counts_in_display_without_changing_ranking(self):
+        with m.db() as c:
+            uid=c.execute("SELECT id FROM users WHERE name='coach'").fetchone()[0]
+            task=c.execute("INSERT INTO tasks(title,detail,week,kind) VALUES('跑步','',?,'required')",(m.week(),)).lastrowid
+            c.execute('INSERT INTO exemptions(user_id,task_id) VALUES(?,?)',(uid,task))
+        rows,total,_=m.team_standings(); row=next(r for r in rows if r['id']==uid)
+        self.assertEqual((row['done'],row['required_met'],total),(0,1,1))
+        with m.db() as c:
+            c.execute("INSERT INTO records(user_id,task_id,sport,minutes,effort,note,image,created,status) VALUES(?,?,'跑步',10,1,'','',?,'approved')",(uid,task,m.now()))
+        rows,total,_=m.team_standings(); row=next(r for r in rows if r['id']==uid)
+        self.assertEqual((row['done'],row['required_met'],total),(1,1,1))
+        with m.db() as c: c.execute('UPDATE tasks SET deleted=1 WHERE id=?',(task,))
+        rows,total,_=m.team_standings(); row=next(r for r in rows if r['id']==uid)
+        self.assertEqual((row['required_met'],total),(0,0))
+
     def test_existing_redemption_entries_are_classified_on_upgrade(self):
         with m.db() as c:
             uid=c.execute("SELECT id FROM users WHERE name='coach'").fetchone()[0]

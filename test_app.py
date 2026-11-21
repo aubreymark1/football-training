@@ -13,7 +13,7 @@ class Flow(unittest.TestCase):
  def setUp(self):
   self.client=m.app.test_client()
   with m.db() as c:
-   c.executescript('DELETE FROM passkeys; DELETE FROM passkey_challenges; DELETE FROM moment_likes; DELETE FROM moment_comments; DELETE FROM moment_posts; DELETE FROM user_avatars; DELETE FROM team_training_plans; DELETE FROM announcement_sends; DELETE FROM weekly_settlements; DELETE FROM reminder_sends; DELETE FROM reports; DELETE FROM exemptions; DELETE FROM email_codes; DELETE FROM email_dispatches; DELETE FROM chat_messages; DELETE FROM chat_threads; DELETE FROM assistant_actions; DELETE FROM login_failures; DELETE FROM ledger; DELETE FROM redemptions; DELETE FROM rewards; DELETE FROM level_changes; DELETE FROM records; DELETE FROM tasks; DELETE FROM invites; DELETE FROM users;')
+   c.executescript('DELETE FROM lottery_settings; DELETE FROM lottery_draws; DELETE FROM passkeys; DELETE FROM passkey_challenges; DELETE FROM moment_likes; DELETE FROM moment_comments; DELETE FROM moment_posts; DELETE FROM user_avatars; DELETE FROM team_training_plans; DELETE FROM announcement_sends; DELETE FROM weekly_settlements; DELETE FROM reminder_sends; DELETE FROM reports; DELETE FROM exemptions; DELETE FROM email_codes; DELETE FROM email_dispatches; DELETE FROM chat_messages; DELETE FROM chat_threads; DELETE FROM assistant_actions; DELETE FROM login_failures; DELETE FROM ledger; DELETE FROM redemptions; DELETE FROM rewards; DELETE FROM level_changes; DELETE FROM records; DELETE FROM tasks; DELETE FROM invites; DELETE FROM users;')
    c.execute('INSERT INTO users(name,password,role) VALUES(?,?,?)',('coach',generate_password_hash('testpassword123'),'admin'))
    c.execute("INSERT INTO app_settings(key,value) VALUES('team_invite',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",('invite',))
  def csrf(self, client=None):
@@ -364,6 +364,25 @@ class Flow(unittest.TestCase):
   self.assertIn('积分后 20%',home)
   other=first.get('/').get_data(as_text=True)
   self.assertNotIn('积分后 20%',other)
+ def test_update_notice_once_per_account_and_version(self):
+  member=m.app.test_client(); self.join_member(member)
+  home=member.get('/').get_data(as_text=True)
+  self.assertIn('id="site-update"',home); self.assertNotIn('id="tour"',home)
+  self.assertIn('id="site-update"',member.get('/').get_data(as_text=True))
+  version=m.site_updates.CURRENT['version']
+  self.assertEqual(self.post('/updates/acknowledge',{'version':str(version+1)},member).status_code,400)
+  self.assertEqual(self.post('/updates/acknowledge',{'version':str(version)},member).status_code,302)
+  home=member.get('/').get_data(as_text=True)
+  self.assertNotIn('id="site-update"',home); self.assertIn('id="tour"',home)
+  self.login('coach'); self.assertIn('id="site-update"',self.client.get('/').get_data(as_text=True))
+  later={**m.site_updates.CURRENT,'version':version+1}
+  with patch.object(m.site_updates,'CURRENT',later):
+   self.assertIn('id="site-update"',member.get('/').get_data(as_text=True))
+   self.post('/updates/acknowledge',{'version':str(version)},member)
+   self.assertIn('id="site-update"',member.get('/').get_data(as_text=True))
+   self.post('/updates/acknowledge',{'version':str(version+1)},member)
+   self.assertNotIn('id="site-update"',member.get('/').get_data(as_text=True))
+
  def test_brand_and_onboarding_tour(self):
   member=m.app.test_client(); self.join_member(member)
   login=member.get('/login').get_data(as_text=True)
@@ -372,6 +391,7 @@ class Flow(unittest.TestCase):
   self.assertNotIn('AI 和数据说明',assistant)
   self.assertEqual(member.get('/static/guide.js').status_code,200)
   self.assertIn('brand/apple-touch-icon.png',login)
+  self.post('/updates/acknowledge',{'version':str(m.site_updates.CURRENT['version'])},member)
   home=member.get('/').get_data(as_text=True)
   self.assertIn('id="tour"',home); self.assertIn('guide.js',home)
   self.assertIn('guide-nav-rewards',home); self.assertIn('guide-nav-team',home)
