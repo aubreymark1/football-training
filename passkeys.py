@@ -66,7 +66,7 @@ def setup(app, db, current, login_required, now):
         with db() as c:
             existing=c.execute('SELECT credential_id FROM passkeys WHERE user_id=?',(user['id'],)).fetchall()
         handle=hmac.new(app.config['SECRET_KEY'].encode(),('passkey-user:'+str(user['id'])).encode(),hashlib.sha256).digest()
-        options=generate_registration_options(rp_id=rp_id,rp_name='岭足体能训练',user_id=handle,user_name=user['name'],user_display_name=user['name'],timeout=180000,
+        options=generate_registration_options(rp_id=rp_id,rp_name='LINGNAN UNITED',user_id=handle,user_name=user['name'],user_display_name=user['name'],timeout=180000,
             authenticator_selection=AuthenticatorSelectionCriteria(resident_key=ResidentKeyRequirement.REQUIRED,user_verification=UserVerificationRequirement.REQUIRED),
             exclude_credentials=[PublicKeyCredentialDescriptor(id=base64url_to_bytes(r['credential_id'])) for r in existing])
         save_challenge('register',options.challenge,user)

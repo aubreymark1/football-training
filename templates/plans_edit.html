@@ -1,4 +1,4 @@
-{% extends 'base.html' %}{% block title %}编辑球队训练计划 · 岭足{% endblock %}{% block main_class %}wide{% endblock %}{% block content %}
+{% extends 'base.html' %}{% block title %}编辑球队训练计划 · LINGNAN UNITED{% endblock %}{% block main_class %}wide{% endblock %}{% block content %}
 <link rel="stylesheet" href="{{ url_for('static',filename='plans.css') }}">
 <a class="back" href="{{ url_for('team_plans_list') }}">每周训练计划</a>
 <header class="plan-detail-head"><div><p class="plans-kicker">{{ plan.week }} 当周 · {{ '已有发布版本' if plan.published else '未发布' }}</p><h1>编辑球队训练计划</h1><p class="page-lede">先整理草稿，再预览并发布给队员。</p></div>{% if plan.published %}<a class="outline" href="{{ url_for('team_plans_view',ident=plan.id) }}">查看已发布版本</a>{% endif %}</header>

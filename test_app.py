@@ -386,7 +386,7 @@ class Flow(unittest.TestCase):
  def test_brand_and_onboarding_tour(self):
   member=m.app.test_client(); self.join_member(member)
   login=member.get('/login').get_data(as_text=True)
-  self.assertIn('岭足体能训练',login); self.assertIn('logo-512.png',login); self.assertIn('favicon-32.png',login)
+  self.assertIn('LINGNAN UNITED',login); self.assertIn('logo-512.png',login); self.assertIn('favicon-32.png',login)
   assistant=member.get('/assistant').get_data(as_text=True)
   self.assertNotIn('AI 和数据说明',assistant)
   self.assertEqual(member.get('/static/guide.js').status_code,200)

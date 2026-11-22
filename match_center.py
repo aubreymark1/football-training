@@ -34,10 +34,13 @@ def init_schema(c):
     seeded=c.execute("SELECT 1 FROM app_settings WHERE key='matches_seeded_v1'").fetchone()
     if not seeded:
         for date,time,round_,home,away in FIXTURES:
-            finished=date=='2026-11-22' and home=='岭南学院' and away=='数学学院'
-            c.execute('''INSERT INTO matches(date,time,competition,round,home,away,venue,status,home_score,away_score,seed_key)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?)''',(date,time,'2026–2027 南校联赛',round_,home,away,'西区大球场',
-                'finished' if finished else 'scheduled',0 if finished else None,0 if finished else None,date+'|'+home+'|'+away))
+            forfeit=date=='2026-11-14' and home=='岭南学院' and away=='中山医光华联队'
+            draw=date=='2026-11-22' and home=='岭南学院' and away=='数学学院'
+            finished=forfeit or draw
+            c.execute('''INSERT INTO matches(date,time,competition,round,home,away,venue,status,home_score,away_score,report,seed_key)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?)''',(date,time,'2026–2027 南校联赛',round_,home,away,'西区大球场',
+                'finished' if finished else 'scheduled',3 if forfeit else 0 if draw else None,0 if finished else None,
+                '对手弃赛，岭南学院 3:0 获胜。' if forfeit else '',date+'|'+home+'|'+away))
         c.execute("INSERT INTO app_settings(key,value) VALUES('matches_seeded_v1','1')")
 
 

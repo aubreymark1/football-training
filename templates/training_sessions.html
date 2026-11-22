@@ -1,4 +1,4 @@
-{% extends 'base.html' %}{% block title %}集体训练 · 岭足{% endblock %}{% block content %}
+{% extends 'base.html' %}{% block title %}集体训练 · LINGNAN UNITED{% endblock %}{% block content %}
 <link rel="stylesheet" href="{{ url_for('static',filename='training-leave.css') }}">
 <div class="training-page"><a class="back" href="{{ url_for('team') }}">球队</a><header class="training-heading"><h1>集体训练</h1>{% if can_manage %}<a class="smallbtn" href="{{ url_for('training_session_edit') }}">添加训练</a>{% endif %}</header>
 <p class="training-note">请至少提前 72 小时请假。逾期请假且实际缺席，计为旷训。</p>

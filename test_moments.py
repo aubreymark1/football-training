@@ -148,7 +148,7 @@ class MomentsTests(unittest.TestCase):
         body=self.alice.get('/moments').get_data(as_text=True)
         self.assertIn('alice',body);self.assertIn('bob',body)
         self.assertNotIn('真实姓名甲',body);self.assertNotIn('真实姓名乙',body)
-        self.assertNotIn('LINGNAN UNITED',body);self.assertNotIn('一起训练，一起留下记录',body)
+        self.assertNotIn('一起训练，一起留下记录',body)
 
 
 if __name__=='__main__':unittest.main()

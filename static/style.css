@@ -430,7 +430,11 @@ body.tour-open{overflow:hidden}
 @media (max-width:380px){
   .cols{grid-template-columns:1fr}
   .effort-row span{font-size:15px}
-  .topright a{max-width:7em}
+  .top{gap:8px}
+  .brand{gap:7px;font-size:12px;white-space:nowrap}
+  .topright{flex:none}
+  .topright a{max-width:4.5em}
+  .topright .textbtn{white-space:nowrap}
 }
 @media (min-width:900px){
   /* 导航移到页眉里，内容不再被底栏压住 */

@@ -31,6 +31,9 @@ class MatchCenterTest(unittest.TestCase):
         with m.db() as c:
             row=c.execute('SELECT * FROM matches WHERE id=?',(self.game,)).fetchone()
             self.assertEqual((row['status'],row['home_score'],row['away_score']),('finished',0,0))
+            first=c.execute("SELECT status,home_score,away_score,report FROM matches WHERE date='2026-11-14'").fetchone()
+            self.assertEqual((first['status'],first['home_score'],first['away_score']),('finished',3,0))
+            self.assertIn('弃赛',first['report'])
             self.assertEqual(c.execute('SELECT count(*) FROM matches').fetchone()[0],10)
         self.assertEqual(self.u.get('/matches').status_code,200)
         self.assertEqual(self.u.get('/').status_code,200)

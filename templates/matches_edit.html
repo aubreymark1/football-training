@@ -1,4 +1,4 @@
-{% extends 'base.html' %}{% block title %}编辑比赛 · 岭足{% endblock %}{% block main_class %}wide{% endblock %}{% block content %}
+{% extends 'base.html' %}{% block title %}编辑比赛 · LINGNAN UNITED{% endblock %}{% block main_class %}wide{% endblock %}{% block content %}
 <link rel="stylesheet" href="{{ url_for('static',filename='matches.css') }}"><div class="match-page"><a class="match-back" href="{{ url_for('matches_index') }}">← 比赛中心</a><h1>{{ '编辑比赛' if game else '添加比赛' }}</h1>
 <form class="match-panel match-form" method="post"><input type="hidden" name="csrf" value="{{ csrf_token }}"><div class="match-fields">
 <label>赛事名称<input name="competition" required maxlength="100" value="{{ game.competition if game else '' }}" placeholder="如南校联赛、友谊赛"></label><label>轮次（选填）<input name="round" value="{{ game.round if game else '' }}"></label>
