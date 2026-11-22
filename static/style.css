@@ -443,3 +443,9 @@ body.tour-open{overflow:hidden}
   .home-grid{grid-template-columns:minmax(0,1fr) 340px;gap:48px;align-items:start}
   .home-side{position:sticky;top:80px}
 }
+@media (min-width:900px) and (max-width:1150px){
+  .bottom{top:auto;bottom:0;left:0;right:0;transform:none;height:auto;padding:0 8px env(safe-area-inset-bottom);gap:0;border-top:1px solid var(--line);background:var(--surface)}
+  .bottom a{flex:1;flex-direction:column;gap:3px;height:var(--nav-h);padding:0;font-size:11px}
+  .bottom svg{width:22px;height:22px}
+  .nav-mark{top:0;bottom:auto}
+}

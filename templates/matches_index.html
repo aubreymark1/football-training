@@ -1,0 +1,5 @@
+{% extends 'base.html' %}{% block title %}比赛中心 · 岭足{% endblock %}{% block main_class %}wide{% endblock %}{% block content %}
+<link rel="stylesheet" href="{{ url_for('static',filename='matches.css') }}">
+<div class="match-page"><header class="match-header"><div><p class="match-kicker">岭南学院足球队</p><h1>比赛中心</h1><p>赛程、比分和属于球队的赛后记录。</p></div>{% if can_manage %}<a class="match-button" href="{{ url_for('matches_edit') }}">＋ 添加比赛</a>{% endif %}</header>
+<div class="match-list">{% for game in games %}<a class="match-list-item" href="{{ url_for('matches_detail',match_id=game.id) }}"><div class="match-meta">{{ game.competition }}{% if game.round %} · 第{{ game.round }}轮{% endif %}<span>{{ game.date }} {{ game.time }}</span></div><div class="match-list-score"><strong>{{ game.home }}</strong><b>{% if game.status == 'finished' %}{{ game.home_score }} : {{ game.away_score }}{% elif game.status == 'cancelled' %}已取消{% else %}VS{% endif %}</b><strong>{{ game.away }}</strong></div><div class="match-meta">{{ game.venue or '地点待定' }} <span>查看比赛 →</span></div></a>{% else %}<p>还没有比赛，添加第一场吧。</p>{% endfor %}</div></div>
+{% endblock %}

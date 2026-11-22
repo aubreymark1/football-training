@@ -2,9 +2,9 @@
 <link rel="stylesheet" href="{{ url_for('static',filename='league.css') }}">
 {% set todo=required|rejectattr('done')|rejectattr('exempt')|rejectattr('pending')|list|length %}{% set waiting=required|length - required_done - todo %}
 <section class="fixture-card" aria-label="南校联赛赛程">
-  <div class="fixture-heading"><div><p>2026–2027 南校联赛</p><h2>下一场比赛</h2></div><span>岭南学院</span></div>
+  <div class="fixture-heading"><div><p>岭南学院足球队</p><h2>下一场比赛</h2></div><a href="{{ url_for('matches_index') }}">比赛中心 →</a></div>
   {% if fixtures %}{% set game=fixtures[0] %}
-  <div class="fixture-main"><div class="fixture-date"><time datetime="{{ game.date }}">{{ game.date[5:7]|int }}<small>月</small>{{ game.date[8:10]|int }}<small>日</small></time><span>{{ game.time }} · 第{{ game.round }}轮</span></div><div class="fixture-teams"><strong>{{ game.home }}</strong><i>vs</i><strong>{{ game.away }}</strong><p>{{ game.venue }}</p></div></div>
+  <a class="fixture-main" href="{{ url_for('matches_detail', match_id=game.id) }}"><div class="fixture-date"><time datetime="{{ game.date }}">{{ game.date[5:7]|int }}<small>月</small>{{ game.date[8:10]|int }}<small>日</small></time><span>{{ game.time }}{% if game.round %} · 第{{ game.round }}轮{% endif %}</span></div><div class="fixture-teams"><strong>{{ game.home }}</strong><i>vs</i><strong>{{ game.away }}</strong><p>{{ game.venue }}</p></div></a>
   {% if fixtures|length > 1 %}<details class="fixture-more"><summary>查看后续赛程 <span>{{ fixtures|length - 1 }} 场</span></summary><div>{% for game in fixtures[1:] %}<div class="fixture-row"><time datetime="{{ game.date }}">{{ game.date[0:4] }}.{{ game.date[5:7] }}.{{ game.date[8:10] }} <b>{{ game.time }}</b></time><span>{{ game.home }} <i>vs</i> {{ game.away }}</span></div>{% endfor %}</div></details>{% endif %}
   {% else %}<p class="fixture-empty">暂无后续赛程</p>{% endif %}
 </section>
