@@ -1,7 +1,6 @@
 """Team match schedule, ratings and reflections."""
 import datetime
 import io
-from decimal import Decimal, InvalidOperation
 
 from flask import abort, flash, redirect, render_template, request, send_file, url_for
 from PIL import Image, UnidentifiedImageError
@@ -109,13 +108,8 @@ def register(app, *, db, current, login_required, now):
     def matches_detail(match_id):
         with db() as c:
             game=match(c,match_id); can_manage=manager(c); uid=current()['id']
-            players=c.execute('''SELECT p.*,avg(r.score)/10.0 average,count(r.score) votes,
-                max(CASE WHEN r.user_id=? THEN r.score END)/10.0 my_score,
-                max(CASE WHEN r.user_id=? THEN r.comment END) my_comment
-                FROM match_players p LEFT JOIN match_ratings r ON r.player_id=p.id WHERE p.match_id=? GROUP BY p.id
-                ORDER BY CASE p.lineup WHEN 'starter' THEN 0 ELSE 1 END,p.id''',(uid,uid,match_id)).fetchall()
-            reviews=c.execute('''SELECT r.*,u.name author FROM match_ratings r JOIN users u ON u.id=r.user_id
-                JOIN match_players p ON p.id=r.player_id WHERE p.match_id=? ORDER BY r.updated DESC''',(match_id,)).fetchall()
+            players=c.execute('''SELECT * FROM match_players WHERE match_id=?
+                ORDER BY CASE lineup WHEN 'starter' THEN 0 ELSE 1 END,id''',(match_id,)).fetchall()
             reflections=c.execute('''SELECT f.*,u.name author, EXISTS(SELECT 1 FROM match_reflection_likes l WHERE l.reflection_id=f.id AND l.user_id=?) liked,
                 (SELECT count(*) FROM match_reflection_likes l WHERE l.reflection_id=f.id) likes
                 FROM match_reflections f JOIN users u ON u.id=f.user_id WHERE f.match_id=? ORDER BY f.id DESC''',(uid,match_id)).fetchall()
@@ -123,9 +117,8 @@ def register(app, *, db, current, login_required, now):
                 JOIN match_reflections f ON f.id=x.reflection_id WHERE f.match_id=? ORDER BY x.id''',(match_id,)).fetchall()
             users=c.execute('SELECT id,name,real_name FROM users WHERE active=1 AND deleted=0 ORDER BY name').fetchall() if can_manage else []
             managers=c.execute('SELECT user_id FROM match_managers').fetchall() if current()['role']=='admin' else []
-        best=max((p['average'] for p in players if p['votes']),default=None)
-        return render_template('matches_detail.html',game=game,players=players,reviews=reviews,reflections=reflections,comments=comments,
-                               can_manage=can_manage,users=users,managers=managers,best=best)
+        return render_template('matches_detail.html',game=game,players=players,reflections=reflections,comments=comments,
+                               can_manage=can_manage,users=users,managers=managers)
 
     @app.post('/matches/managers')
     @login_required
@@ -171,28 +164,18 @@ def register(app, *, db, current, login_required, now):
                 c.execute('UPDATE match_players SET lineup=? WHERE id=?',(action,player_id))
             elif action=='remove':
                 if c.execute('SELECT 1 FROM match_ratings WHERE player_id=?',(player_id,)).fetchone():
-                    flash('该球员已有评分，不能直接从名单移除。','error')
+                    flash('该球员有关联的历史记录，暂不能移出名单。','error')
                 else: c.execute('DELETE FROM match_players WHERE id=?',(player_id,))
             else: abort(400)
         return back(match_id)
 
-    @app.post('/matches/<int:match_id>/players/<int:player_id>/rate')
+    @app.get('/matches/<int:match_id>/reflections/new')
     @login_required
-    def matches_rate(match_id,player_id):
+    def matches_reflection_new(match_id):
         with db() as c:
             game=match(c,match_id)
-            if game['status']!='finished' or not c.execute('SELECT 1 FROM match_players WHERE id=? AND match_id=?',(player_id,match_id)).fetchone(): abort(400)
-            try:
-                value=Decimal(request.form.get('score','')); scaled=value*10
-                if not value.is_finite() or scaled!=scaled.to_integral_value() or not 10<=scaled<=100: raise ValueError()
-                score=int(scaled)
-            except (InvalidOperation,ValueError): abort(400)
-            comment=request.form.get('comment','').strip()
-            if len(comment)>1000: abort(400)
-            c.execute('''INSERT INTO match_ratings(player_id,user_id,score,comment,updated) VALUES(?,?,?,?,?)
-                ON CONFLICT(player_id,user_id) DO UPDATE SET score=excluded.score,comment=excluded.comment,updated=excluded.updated''',
-                (player_id,current()['id'],score,comment,now()))
-        return back(match_id)
+            if game['status']!='finished': abort(404)
+        return render_template('match_reflection_new.html',game=game)
 
     @app.post('/matches/<int:match_id>/reflections')
     @login_required
