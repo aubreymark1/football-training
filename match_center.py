@@ -59,15 +59,19 @@ def register(app, *, db, current, login_required, now):
         if not row: abort(404)
         return row
 
-    def back(match_id): return redirect(url_for('matches_detail',match_id=match_id))
+    def back(match_id, anchor=None): return redirect(url_for('matches_detail',match_id=match_id,_anchor=anchor))
 
     @app.get('/matches')
     @login_required
     def matches_index():
         with db() as c:
-            games=c.execute("SELECT * FROM matches ORDER BY CASE status WHEN 'scheduled' THEN 0 ELSE 1 END, CASE WHEN status='scheduled' THEN date END ASC, CASE WHEN status!='scheduled' THEN date END DESC,time,id").fetchall()
+            games=c.execute('SELECT * FROM matches ORDER BY date DESC,time DESC,id DESC').fetchall()
             can_manage=manager(c)
-        return render_template('matches_index.html',games=games,can_manage=can_manage)
+        today=now()[:10]
+        finished=[game for game in games if game['status']=='finished']
+        upcoming=sorted((game for game in games if game['status']=='scheduled' and game['date']>=today),key=lambda game:(game['date'],game['time'],game['id']))
+        other=[game for game in games if game['status']=='cancelled' or (game['status']=='scheduled' and game['date']<today)]
+        return render_template('matches_index.html',latest=finished[0] if finished else None,history=finished[1:],upcoming=upcoming,other=other,can_manage=can_manage,today=today)
 
     @app.route('/matches/new',methods=['GET','POST'])
     @app.route('/matches/<int:match_id>/edit',methods=['GET','POST'])
@@ -204,7 +208,7 @@ def register(app, *, db, current, login_required, now):
         with db() as c:
             if match(c,match_id)['status']!='finished': abort(400)
             c.execute('INSERT INTO match_reflections(match_id,user_id,content,image,image_type,created) VALUES(?,?,?,?,?,?)',(match_id,current()['id'],content,raw,kind,now()))
-        return back(match_id)
+        return back(match_id,'reflections')
 
     @app.get('/matches/reflections/<int:reflection_id>/image')
     @login_required
@@ -236,7 +240,7 @@ def register(app, *, db, current, login_required, now):
                 if row['user_id']!=uid and not manager(c): abort(403)
                 c.execute('DELETE FROM match_reflections WHERE id=?',(reflection_id,))
             else: abort(404)
-        return back(match_id)
+        return back(match_id,'reflections')
 
     @app.post('/matches/<int:match_id>/comments/<int:comment_id>/delete')
     @login_required
@@ -247,4 +251,4 @@ def register(app, *, db, current, login_required, now):
             if not row: abort(404)
             if row['user_id']!=current()['id'] and not manager(c): abort(403)
             c.execute('DELETE FROM match_reflection_comments WHERE id=?',(comment_id,))
-        return back(match_id)
+        return back(match_id,'reflections')

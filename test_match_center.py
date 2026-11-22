@@ -35,6 +35,15 @@ class MatchCenterTest(unittest.TestCase):
         self.assertEqual(self.u.get('/matches').status_code,200)
         self.assertEqual(self.u.get('/').status_code,200)
 
+    def test_latest_result_is_featured_and_future_fixtures_are_grouped(self):
+        with m.db() as c:
+            c.execute("INSERT INTO matches(date,time,competition,home,away,status,home_score,away_score) VALUES('2026-11-23','12:00','测试赛','岭南学院','新对手','finished',2,1)")
+        html=self.u.get('/matches').get_data(as_text=True)
+        self.assertLess(html.index('最近完赛'),html.index('接下来'))
+        self.assertIn('新对手',html)
+        self.assertIn('历史比赛',html)
+        self.assertIn('查看全部赛程',html)
+
     def test_create_edit_and_scheduled_matches_are_not_rated(self):
         data=dict(date='2027-06-01',time='15:00',competition='友谊赛',round='',home='岭南学院',away='对手',venue='球场',status='scheduled',home_score='',away_score='',report='',goals='',assists='')
         self.assertEqual(self.post(self.u,'/matches/new',**data).status_code,403)
@@ -72,7 +81,9 @@ class MatchCenterTest(unittest.TestCase):
 
     def test_reflection_image_like_comments_and_ownership(self):
         image=io.BytesIO(); Image.new('RGB',(5,5),'red').save(image,'PNG'); image.seek(0)
-        self.assertEqual(self.u.post(f'/matches/{self.game}/reflections',data={'csrf':'csrf','content':'比赛反思','image':(image,'x.png')}).status_code,302)
+        response=self.u.post(f'/matches/{self.game}/reflections',data={'csrf':'csrf','content':'比赛反思','image':(image,'x.png')})
+        self.assertEqual(response.status_code,302)
+        self.assertTrue(response.headers['Location'].endswith('#reflections'))
         with m.db() as c: rid=c.execute('SELECT id FROM match_reflections').fetchone()['id']
         self.assertEqual(self.v.get(f'/matches/reflections/{rid}/image').status_code,200)
         base=f'/matches/{self.game}/reflections/{rid}'
