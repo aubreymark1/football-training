@@ -8,6 +8,7 @@ import avatars
 import site_updates
 import match_center
 import training_leave
+import match_leave
 import hashlib, hmac
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -79,6 +80,7 @@ def init():
         avatars.init_schema(c)
         match_center.init_schema(c)
         training_leave.init_schema(c)
+        match_leave.init_schema(c, now())
         old=c.execute('SELECT code FROM invites ORDER BY rowid DESC LIMIT 1').fetchone()
         c.execute('INSERT OR IGNORE INTO app_settings(key,value) VALUES(?,?)',('team_invite',old['code'] if old else secrets.token_urlsafe(12)))
         cols={r['name'] for r in c.execute('PRAGMA table_info(users)')}
@@ -650,8 +652,10 @@ def account():
         if not 10<=len(new)<=128 or new!=confirm: flash('新密码需为 10–128 位，两次输入须一致。','error'); return redirect(url_for('account'))
         with db() as c: c.execute('UPDATE users SET password=?,session_version=session_version+1 WHERE id=?',(generate_password_hash(new),current()['id']))
         session.clear(); flash('密码已修改，请重新登录。'); return redirect(url_for('login'))
-    with db() as c: passkeys=c.execute('SELECT id,label,created,last_used FROM passkeys WHERE user_id=? ORDER BY id',(current()['id'],)).fetchall()
-    return render_template('account.html',passkeys=passkeys)
+    with db() as c:
+        passkeys=c.execute('SELECT id,label,created,last_used FROM passkeys WHERE user_id=? ORDER BY id',(current()['id'],)).fetchall()
+        leave=match_leave.account_data(c,current()['id'],now())
+    return render_template('account.html',passkeys=passkeys,leave=leave)
 import passkeys as passkey_module
 passkey_module.setup(app,db,current,login_required,now)
 @app.post('/account/real-name')
@@ -1128,6 +1132,7 @@ import lottery
 lottery.register(app, db=db, current=current, login_required=login_required, now=now, settle=settle_required_penalties)
 match_center.register(app, db=db, current=current, login_required=login_required, now=now)
 training_leave.register(app, db=db, current=current, login_required=login_required, now=now)
+match_leave.register(app, db=db, current=current, login_required=login_required, now=now)
 if __name__=='__main__':
     import argparse
     p=argparse.ArgumentParser(); p.add_argument('command',choices=['serve','init-admin']); p.add_argument('--name'); a=p.parse_args(); init()

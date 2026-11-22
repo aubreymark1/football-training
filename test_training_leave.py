@@ -56,7 +56,7 @@ class TrainingLeaveFlowTests(unittest.TestCase):
     def test_leave_privacy_and_captain_views(self):
         ident,_=self.create(100);url=f'/training-sessions/{ident}'
         self.assertEqual(self.post(self.p,url+'/leave',reason='私人原因').status_code,302)
-        self.assertIn('按时请假',self.p.get(url).get_data(as_text=True))
+        self.assertIn('按时请假',self.p.get('/account').get_data(as_text=True))
         self.assertIn('私人原因',self.cap.get(url).get_data(as_text=True))
         other=self.o.get(url).get_data(as_text=True)
         self.assertNotIn('私人原因',other);self.assertNotIn('player',other)
@@ -67,14 +67,14 @@ class TrainingLeaveFlowTests(unittest.TestCase):
     def test_late_leave_is_absence_only_after_captain_confirmation(self):
         ident,_=self.create(2);url=f'/training-sessions/{ident}'
         self.assertEqual(self.post(self.p,url+'/leave',reason='身体不适').status_code,302)
-        before=self.p.get(url).get_data(as_text=True)
+        before=self.p.get('/account').get_data(as_text=True)
         self.assertIn('逾期请假',before);self.assertNotIn('队长确认：',before)
         past=(datetime.datetime.now(ZoneInfo('Asia/Shanghai'))-datetime.timedelta(hours=1)).isoformat(timespec='seconds')
         with m.db() as c:c.execute('UPDATE training_sessions SET ends_at=? WHERE id=?',(past,ident))
         self.assertEqual(self.post(self.cap,url+f'/attendance/{self.player}',attendance='absent').status_code,302)
-        self.assertIn('旷训',self.p.get(url).get_data(as_text=True))
+        self.assertIn('旷训',self.p.get('/account').get_data(as_text=True))
         self.assertEqual(self.post(self.cap,url+f'/attendance/{self.player}',attendance='attended').status_code,302)
-        self.assertIn('已出勤',self.p.get(url).get_data(as_text=True))
+        self.assertIn('已出勤',self.p.get('/account').get_data(as_text=True))
 
     def test_timely_leave_and_unannounced_absence_are_distinct(self):
         ident,_=self.create(100);url=f'/training-sessions/{ident}'
@@ -83,8 +83,8 @@ class TrainingLeaveFlowTests(unittest.TestCase):
         with m.db() as c:c.execute('UPDATE training_sessions SET ends_at=? WHERE id=?',(past,ident))
         self.post(self.cap,url+f'/attendance/{self.player}',attendance='absent')
         self.post(self.cap,url+f'/attendance/{self.other}',attendance='absent')
-        self.assertIn('请假缺席',self.p.get(url).get_data(as_text=True))
-        self.assertIn('旷训',self.o.get(url).get_data(as_text=True))
+        self.assertIn('请假缺席',self.p.get('/account').get_data(as_text=True))
+        self.assertIn('旷训',self.cap.get(url).get_data(as_text=True))
         m.init()
         with m.db() as c:self.assertEqual(c.execute('SELECT count(*) FROM training_attendance').fetchone()[0],2)
 

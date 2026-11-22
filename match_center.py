@@ -80,6 +80,7 @@ def register(app, *, db, current, login_required, now):
     @login_required
     def matches_edit(match_id=None):
         with db() as c:
+            if request.method=='POST': c.execute('BEGIN IMMEDIATE')
             require_manager(c)
             game=match(c,match_id) if match_id is not None else None
             if request.method=='POST':
@@ -97,6 +98,8 @@ def register(app, *, db, current, login_required, now):
                     return render_template('matches_edit.html',game=fields),400
                 values=[fields[x] for x in ('date','time','competition','round','home','away','venue','status')]+scores+[fields[x] for x in ('report','goals','assists')]
                 if game:
+                    if (fields['date']!=game['date'] or fields['time']!=game['time']) and c.execute("SELECT 1 FROM match_leave_requests WHERE match_id=? AND status='active'",(match_id,)).fetchone():
+                        flash('已有队员请假，不能直接修改比赛时间；请取消本场并重新创建。','error'); return back(match_id)
                     c.execute('UPDATE matches SET date=?,time=?,competition=?,round=?,home=?,away=?,venue=?,status=?,home_score=?,away_score=?,report=?,goals=?,assists=? WHERE id=?',values+[match_id])
                 else:
                     cur=c.execute('INSERT INTO matches(date,time,competition,round,home,away,venue,status,home_score,away_score,report,goals,assists) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',values); match_id=cur.lastrowid
