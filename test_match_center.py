@@ -79,6 +79,15 @@ class MatchCenterTest(unittest.TestCase):
         self.assertEqual(self.post(self.u,path,name='另一位',lineup='substitute').status_code,302)
         self.assertEqual(self.post(self.u,'/matches/managers',user_id=str(self.other),action='add').status_code,403)
 
+    def test_players_show_account_avatar_or_default(self):
+        url=f'/matches/{self.game}'
+        self.assertEqual(self.post(self.a,url+'/players',user_id=str(self.member),lineup='starter').status_code,302)
+        self.assertEqual(self.post(self.a,url+'/players',name='未注册球员',lineup='substitute').status_code,302)
+        page=self.u.get(url).get_data(as_text=True)
+        self.assertIn(f'src="/avatar/{self.member}"',page)
+        self.assertIn('src="/static/avatars/default-1.jpg?',page)
+        self.assertEqual(self.u.get(f'/avatar/{self.member}').status_code,302)
+
     def test_reflection_image_like_comments_and_ownership(self):
         image=io.BytesIO(); Image.new('RGB',(5,5),'red').save(image,'PNG'); image.seek(0)
         response=self.u.post(f'/matches/{self.game}/reflections',data={'csrf':'csrf','content':'比赛反思','image':(image,'x.png')})

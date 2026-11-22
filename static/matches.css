@@ -9,3 +9,4 @@
 @supports selector(.match-columns:has(#reflections:target)){
  @media(max-width:700px){.match-reflections{display:none}.match-reflections:target{display:block}.match-columns:has(#reflections:target) .match-ratings{display:none}.match-page:not(:has(#reflections:target)) .match-section-tabs a:first-child,.match-page:has(#reflections:target) .match-section-tabs a:last-child{background:var(--match-pitch);color:#fff}}
 }
+.match-player-identity{display:flex;align-items:center;gap:10px;min-width:0}.match-player-identity>div{min-width:0;overflow-wrap:anywhere}.match-player-avatar{display:block;flex:none;width:40px;height:40px;border-radius:50%;object-fit:cover;background:var(--match-line)}
