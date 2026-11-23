@@ -1,10 +1,30 @@
 <form method="post" enctype="multipart/form-data" class="card stack" data-record-form data-lock="上传中">
-<input type="hidden" name="csrf" value="{{ csrf_token }}">
-<input type="hidden" name="moments_notice" value="1">
-<div><label>运动类型<input name="sport" placeholder="点下面的快选，或自己填写" required maxlength="40" autocomplete="off"></label><div class="chips" aria-label="常见运动类型">{% for s in ('跑步','力量','有球训练','间歇跑','核心','骑行') %}<button type="button" class="chip" data-sport="{{ s }}">{{ s }}</button>{% endfor %}</div></div>
-<label>训练时长（分钟）<input type="number" name="minutes" min="1" max="1440" required inputmode="numeric" placeholder="例如 45"></label>
-<fieldset class="effort"><legend class="field-title">主观用力程度</legend><div class="effort-row">{% for n in range(1,11) %}<label><input type="radio" name="effort" value="{{ n }}" required aria-label="用力程度 {{ n }}"><span>{{ n }}</span></label>{% endfor %}</div><div class="effort-scale"><span>1 很轻松</span><output aria-live="polite"></output><span>10 非常吃力</span></div></fieldset>
-<div><span class="field-title">运动记录截图</span><label class="upload" style="margin-top:6px"><input type="file" name="image" accept="image/*" required aria-label="选择运动记录截图"><span class="upload-thumb"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 15l-5-5-8 9"/></svg></span><span class="upload-text"><strong>选择截图</strong><small>Keep、Apple 健康等 App 的记录截图，8MB 以内</small></span></label><p class="form-error" role="alert" hidden></p><p class="hint">{{ privacy_hint }}</p></div>
-<label>备注（选填）<textarea name="note" maxlength="500" rows="3" placeholder="补充训练内容或需要说明的情况"></textarea></label>
-<button class="primary">{{ submit_label }}</button>
+  {{ csrf_field() }}
+  <input type="hidden" name="moments_notice" value="1">
+  <div>
+    <label>运动类型<input name="sport" placeholder="点下面的快选，或自己填写" required maxlength="40" autocomplete="off"></label>
+    <div class="chips" aria-label="常见运动类型">
+      {% for s in ('跑步','力量','有球训练','间歇跑','核心','骑行') %}<button type="button" class="chip" data-sport="{{ s }}">{{ s }}</button>{% endfor %}
+    </div>
+  </div>
+  <label>训练时长（分钟）<input type="number" name="minutes" min="1" max="1440" required inputmode="numeric" placeholder="例如 45"></label>
+  <fieldset class="effort">
+    <legend class="field-title">主观用力程度</legend>
+    <div class="effort-row">
+      {% for n in range(1,11) %}
+        <label><input type="radio" name="effort" value="{{ n }}" required aria-label="用力程度 {{ n }}"><span>{{ n }}</span></label>
+      {% endfor %}
+    </div>
+    <div class="effort-scale"><span>1 很轻松</span><output aria-live="polite"></output><span>10 非常吃力</span></div>
+  </fieldset>
+  <div>
+    <span class="field-title">运动记录截图</span>
+    <label class="upload mt-6">
+      <input type="file" name="image" accept="image/*" required aria-label="选择运动记录截图"><span class="upload-thumb"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 15l-5-5-8 9"/></svg></span><span class="upload-text"><strong>选择截图</strong><small>Keep、Apple 健康等 App 的记录截图，8MB 以内</small></span>
+    </label>
+    <p class="form-error" role="alert" hidden></p>
+    <p class="hint">{{ privacy_hint }}</p>
+  </div>
+  <label>备注（选填）<textarea name="note" maxlength="500" rows="3" placeholder="补充训练内容或需要说明的情况"></textarea></label>
+  <button class="primary">{{ submit_label }}</button>
 </form>

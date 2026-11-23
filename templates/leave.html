@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block title %}我的请假 · LINGNAN UNITED{% endblock %}
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static',filename='training-leave.css') }}">
+{% endblock %}
+{% block content %}
+  <a class="back" href="{{ url_for('account') }}">账号设置</a>
+  <h1>我的请假</h1>
+  <p class="page-lede">集体训练和比赛分开请假、分开统计。请至少提前 72 小时提交；逾期仍可提交，缺席时由队长按实际情况记录。</p>
+  <p class="leave-counts">
+    <span>训练请假 <strong>{{ leave.training_count }}</strong> 次</span><span>比赛请假 <strong>{{ leave.match_count }}</strong> 次</span>
+  </p>
+  <p class="hint">分别统计有效请假，已取消的请假或场次不计入。</p>
+
+  {% macro leave_event(anchor, title, meta, action, cancel_action, active, reason, kind) %}
+    <details class="leave-event" id="{{ anchor }}">
+      <summary>
+        <strong>{{ title }}</strong><span>{{ meta }}{% if active %} · 已请假{% endif %}</span>
+      </summary>
+      <form class="training-form" method="post" action="{{ action }}">
+        {{ csrf_field() }}
+        <label>
+          请假原因<textarea name="reason" rows="2" maxlength="500" required>{{ reason if active else '' }}</textarea>
+        </label>
+        <p class="hint">{{ '修改原因不改变原提交时间。' if active else '原因仅本人、队长及管理员可见。' }}</p>
+        <button class="smallbtn">{{ '修改原因' if active else '提交' ~ kind ~ '请假' }}</button>
+      </form>
+      {% if active and cancel_action %}
+        <form method="post" action="{{ cancel_action }}">
+          {{ csrf_field() }}<button class="textbtn">取消请假</button>
+        </form>
+      {% endif %}
+    </details>
+  {% endmacro %}
+
+  {% macro leave_history(rows, absent_label, is_training, empty) %}
+    {% for item in rows %}
+      {% set attendance_shown = (item.event_status != 'cancelled') if is_training else (item.event_status == 'finished') %}
+      <p class="leave-history">
+        <strong>{{ item.title if is_training else item.home ~ ' vs ' ~ item.away }}</strong> ·
+        {{ item.starts_at[:16]|replace('T',' ') if is_training else item.date ~ ' ' ~ item.time }}<br>
+        <span>{{ '场次已取消' if item.event_status == 'cancelled' else '请假已取消' if item.status == 'cancelled' else '按时请假' if item.timely else '逾期请假' }}{% if attendance_shown and item.status == 'active' and item.attendance %} · {{ '已出勤' if item.attendance == 'attended' else '请假缺席' if item.timely else absent_label }}{% endif %}</span>
+      </p>
+    {% else %}
+      <p class="hint">{{ empty }}</p>
+    {% endfor %}
+  {% endmacro %}
+
+  <details class="leave-group" open>
+    <summary>训练请假 <span>{{ leave.training|length }} 场可选</span></summary>
+    {% for item in leave.training %}
+      {{ leave_event('training-' ~ item.id, item.title, item.starts_at[:16]|replace('T',' '), url_for('training_leave_submit',session_id=item.id), url_for('training_leave_cancel',session_id=item.id) if item.leave_status == 'active' and item.starts_at > leave.now else None, item.leave_status == 'active', item.reason, '训练') }}
+    {% else %}
+      <p class="hint">暂无可请假的训练。</p>
+    {% endfor %}
+  </details>
+
+  <details class="leave-group">
+    <summary>比赛请假 <span>{{ leave.matches|length }} 场可选</span></summary>
+    {% for item in leave.matches %}
+      {{ leave_event('match-' ~ item.id, item.home ~ ' vs ' ~ item.away, item.date ~ ' ' ~ item.time, url_for('account_match_leave',match_id=item.id), url_for('account_match_leave_cancel',match_id=item.id) if item.leave_status == 'active' and item.status == 'scheduled' and (item.date ~ 'T' ~ item.time) > leave.now else None, item.leave_status == 'active', item.reason, '比赛') }}
+    {% else %}
+      <p class="hint">暂无可请假的比赛。</p>
+    {% endfor %}
+  </details>
+
+  <details class="leave-group">
+    <summary>请假记录 <span>最近各 50 条</span></summary>
+    <h3>训练</h3>
+    {{ leave_history(leave.training_history, '旷训', true, '暂无训练请假记录。') }}
+    <h3>比赛</h3>
+    {{ leave_history(leave.match_history, '旷赛', false, '暂无比赛请假记录。') }}
+  </details>
+
+  <p class="hint leave-foot">
+    请假提交后队长的出勤表会立即更新。<a href="{{ url_for('training_sessions') }}">查看集体训练</a> · <a href="{{ url_for('matches_index') }}">查看比赛中心</a>
+  </p>
+  <script src="{{ url_for('static',filename='leave.js') }}" defer></script>
+{% endblock %}

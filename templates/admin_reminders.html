@@ -1,1 +1,35 @@
-{% extends 'base.html' %}{% block content %}<a class="back" href="{{ url_for('admin') }}">球队管理</a><h1>训练提醒</h1><p class="page-lede">{{ active_week }} 这周还没上传训练记录的队员</p><p class="hint">按提交时间统计，待审核的记录也算已上传。仅列出已验证邮箱的在用队员。</p>{% if not mail_ready %}<div class="notice warn-notice" style="margin:12px 0 0">邮件服务尚未配置，暂时发不了提醒。</div>{% endif %}<div class="section-head"><h2>本周任务通知</h2><span class="pill">{{ active_week }} 起</span></div><div class="card"><p>把本周任务清单发给全部队员（{{ members_total }} 人），已经收到通知的人不会重复收信。</p><p class="muted tiny">已发送 {{ announce_sent }} 人{% if announce_failed %}，失败 {{ announce_failed }} 人（可再点一次重试）{% endif %}</p><form method="post" action="{{ url_for('notify_week') }}" data-lock="发送中" data-confirm="给全部 {{ members_total }} 名队员发送本周任务通知？" data-confirm-action="发送"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="primary" {% if not mail_ready or not tasks_count %}disabled{% endif %}>发送任务通知</button></form></div><form method="post" action="{{ url_for('send_reminders') }}" class="card stack" style="margin-top:16px" data-lock="发送中"><input type="hidden" name="csrf" value="{{ csrf_token }}"><div class="reminder-list">{% for row in rows %}<label class="reminder-row"><input type="checkbox" name="user_id" value="{{ row.id }}" {% if row.reminder_status in ('sent','sending') %}disabled{% endif %}><span><strong>{{ row.name }}</strong><br><small>{{ row.email }}</small></span><small>{{ '已发送' if row.reminder_status=='sent' else ('发送中' if row.reminder_status=='sending' else ('发送失败，可重试' if row.reminder_status=='failed' else '未提醒')) }}</small></label>{% else %}<p class="muted">这周大家都交过记录了，不需要提醒。</p>{% endfor %}</div><button class="primary" {% if not mail_ready or not rows %}disabled{% endif %}>发送所选提醒</button></form>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}提醒与通知 · LINGNAN UNITED{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('admin') }}">球队管理</a>
+  <h1>训练提醒</h1>
+  <p class="page-lede">{{ active_week }} 这周还没上传训练记录的队员</p>
+  <p class="hint">按提交时间统计，待审核的记录也算已上传。仅列出已验证邮箱的在用队员。</p>
+  {% if not mail_ready %}
+    <div class="notice warn-notice mt-12">邮件服务尚未配置，暂时发不了提醒。</div>
+  {% endif %}
+  <div class="section-head">
+    <h2>本周任务通知</h2>
+    <span class="pill">{{ active_week }} 起</span>
+  </div>
+  <div class="card">
+    <p>把本周任务清单发给全部队员（{{ members_total }} 人），已经收到通知的人不会重复收信。</p>
+    <p class="muted tiny">已发送 {{ announce_sent }} 人{% if announce_failed %}，失败 {{ announce_failed }} 人（可再点一次重试）{% endif %}</p>
+    <form method="post" action="{{ url_for('notify_week') }}" data-lock="发送中" data-confirm="给全部 {{ members_total }} 名队员发送本周任务通知？" data-confirm-action="发送">
+      {{ csrf_field() }}<button class="primary" {% if not mail_ready or not tasks_count %}disabled{% endif %}>发送任务通知</button>
+    </form>
+  </div>
+  <form method="post" action="{{ url_for('send_reminders') }}" class="card stack mt-16" data-lock="发送中">
+    {{ csrf_field() }}
+    <div class="reminder-list">
+      {% for row in rows %}
+        <label class="reminder-row">
+          <input type="checkbox" name="user_id" value="{{ row.id }}" {% if row.reminder_status in ('sent','sending') %}disabled{% endif %}><span><strong>{{ row.name }}</strong><br><small>{{ row.email }}</small></span><small>{{ '已发送' if row.reminder_status=='sent' else ('发送中' if row.reminder_status=='sending' else ('发送失败，可重试' if row.reminder_status=='failed' else '未提醒')) }}</small>
+        </label>
+      {% else %}
+        <p class="muted">这周大家都交过记录了，不需要提醒。</p>
+      {% endfor %}
+    </div>
+    <button class="primary" {% if not mail_ready or not rows %}disabled{% endif %}>发送所选提醒</button>
+  </form>
+{% endblock %}

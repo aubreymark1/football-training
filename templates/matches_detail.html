@@ -1,16 +1,123 @@
-{% extends 'base.html' %}{% block title %}{{ game.home }} vs {{ game.away }} · LINGNAN UNITED{% endblock %}{% block main_class %}wide{% endblock %}{% block content %}
-<link rel="stylesheet" href="{{ url_for('static',filename='matches.css') }}"><div class="match-page match-detail-page"><a class="match-back" href="{{ url_for('matches_index') }}">← 比赛中心</a>
-<section class="match-scoreboard"><p>{{ game.competition }}{% if game.round %} · 第{{ game.round }}轮{% endif %}　{{ game.date }} {{ game.time }}</p><div><strong>{{ game.home }}</strong><b>{% if game.status == 'finished' %}{{ game.home_score }} : {{ game.away_score }}{% elif game.status == 'cancelled' %}已取消{% else %}VS{% endif %}</b><strong>{{ game.away }}</strong></div><p>{{ game.venue or '地点待定' }} · {{ {'scheduled':'未开始','finished':'已结束','cancelled':'已取消'}[game.status] }}</p>{% if can_manage %}<a href="{{ url_for('matches_edit',match_id=game.id) }}">编辑比赛信息 →</a>{% endif %}</section>
-{% if me.role == 'admin' or me.is_captain %}<p><a class="outline" href="{{ url_for('match_attendance_view',match_id=game.id) }}">比赛请假与出勤</a></p>{% endif %}
-{% if game.report or game.goals or game.assists %}<section class="match-panel"><h2>比赛战报</h2>{% if game.report %}<p class="match-pre">{{ game.report }}</p>{% endif %}{% if game.goals %}<p><b>进球</b>　{{ game.goals }}</p>{% endif %}{% if game.assists %}<p><b>助攻</b>　{{ game.assists }}</p>{% endif %}</section>{% endif %}
-{% if players or can_manage %}<details class="match-panel match-roster"><summary>参赛名单{% if players %}（{{ players|length }}）{% endif %}</summary>
-{% for p in players %}<div class="match-roster-row"><div class="match-player-identity"><img class="match-player-avatar" src="{{ url_for('avatar_image',uid=p.user_id) if p.user_id else url_for('static',filename='avatars/default-1.jpg') }}" onerror="this.onerror=null;this.src='{{ url_for('static',filename='avatars/default-1.jpg') }}'" alt="" width="40" height="40" loading="lazy"><span><strong>{{ p.name }}</strong> <small>{{ '首发' if p.lineup == 'starter' else '替补' }}</small></span></div>{% if can_manage %}<form method="post" action="{{ url_for('matches_player_manage',match_id=game.id,player_id=p.id) }}" class="match-tools"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button name="action" value="{{ 'substitute' if p.lineup == 'starter' else 'starter' }}">设为{{ '替补' if p.lineup == 'starter' else '首发' }}</button><button name="action" value="remove">移出名单</button></form>{% endif %}</div>{% else %}<p class="match-empty">参赛名单尚未添加。</p>{% endfor %}
-{% if can_manage %}<details class="match-manage"><summary>管理参赛名单</summary><form method="post" action="{{ url_for('matches_player_add',match_id=game.id) }}" class="match-form"><input type="hidden" name="csrf" value="{{ csrf_token }}"><label>选择已注册队员<select name="user_id"><option value="">手动填写姓名</option>{% for u in users %}<option value="{{ u.id }}">{{ u.name }}{% if u.real_name %}（{{ u.real_name }}）{% endif %}</option>{% endfor %}</select></label><label>未注册球员姓名<input name="name" maxlength="100"></label><label>出场身份<select name="lineup"><option value="starter">首发</option><option value="substitute">替补</option></select></label><button>添加球员</button></form></details>{% endif %}
-{% if me.role == 'admin' %}<details class="match-manage"><summary>管理比赛维护人员</summary><form method="post" action="{{ url_for('matches_managers') }}" class="match-form"><input type="hidden" name="csrf" value="{{ csrf_token }}"><label>选择账号<select name="user_id">{% for u in users %}<option value="{{ u.id }}">{{ u.name }}{% if u.real_name %}（{{ u.real_name }}）{% endif %}{% if u.id in managers|map(attribute='user_id')|list %} · 已授权{% endif %}</option>{% endfor %}</select></label><div><button name="action" value="add">授权维护</button> <button name="action" value="remove">取消授权</button></div></form></details>{% endif %}</details>{% endif %}
-<section id="reflections" class="match-reflections-feed"><h2>赛后反思</h2>
-{% for f in reflections %}<article class="match-reflection-card"><a class="match-reflection-avatar" href="{{ url_for('avatar_image',uid=f.user_id) }}" aria-label="查看{{ f.author }}的头像"><img src="{{ url_for('avatar_image',uid=f.user_id) }}" onerror="this.onerror=null;this.src='{{ url_for('static',filename='avatars/default-1.jpg') }}'" alt="" width="40" height="40" loading="lazy"></a><div class="match-reflection-content"><div class="match-reflection-head"><strong>{{ f.author }}</strong><time>{{ f.created[:16]|replace('T',' ') }}</time></div><p class="match-pre">{{ f.content }}</p>{% if f.image %}<a href="{{ url_for('matches_reflection_image',reflection_id=f.id) }}"><img class="match-image" src="{{ url_for('matches_reflection_image',reflection_id=f.id) }}" alt="{{ f.author }}的赛后反思图片" loading="lazy"></a>{% endif %}
-<form method="post" action="{{ url_for('matches_reflection_action',match_id=game.id,reflection_id=f.id,action='like') }}"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="match-link">{{ '取消赞' if f.liked else '点赞' }} · {{ f.likes }}</button></form>
-{% for comment in comments if comment.reflection_id == f.id %}<div class="match-comment"><b>{{ comment.author }}</b>：{{ comment.content }} {% if comment.user_id == me.id or can_manage %}<form method="post" action="{{ url_for('matches_comment_delete',match_id=game.id,comment_id=comment.id) }}"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="match-link">删除</button></form>{% endif %}</div>{% endfor %}
-<form class="match-comment-form" method="post" action="{{ url_for('matches_reflection_action',match_id=game.id,reflection_id=f.id,action='comment') }}"><input type="hidden" name="csrf" value="{{ csrf_token }}"><input name="content" required maxlength="1000" placeholder="写评论"><button>评论</button></form>
-{% if f.user_id == me.id %}<details><summary>编辑我的反思</summary><form class="match-form" method="post" action="{{ url_for('matches_reflection_action',match_id=game.id,reflection_id=f.id,action='edit') }}"><input type="hidden" name="csrf" value="{{ csrf_token }}"><textarea name="content" required maxlength="3000">{{ f.content }}</textarea><button>保存</button></form></details>{% endif %}{% if f.user_id == me.id or can_manage %}<form method="post" action="{{ url_for('matches_reflection_action',match_id=game.id,reflection_id=f.id,action='delete') }}" data-confirm="确定删除这条反思？"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="match-link">删除反思</button></form>{% endif %}</div></article>{% else %}<p class="match-reflections-empty">还没有赛后反思{% if game.status == 'finished' %}，点右下角 + 发布。{% else %}。{% endif %}</p>{% endfor %}</section>
-{% if game.status == 'finished' %}<a class="match-compose-button" href="{{ url_for('matches_reflection_new',match_id=game.id) }}" aria-label="发布赛后反思" title="发布赛后反思"><span aria-hidden="true">＋</span></a>{% endif %}</div>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}{{ game.home }} vs {{ game.away }} · LINGNAN UNITED{% endblock %}
+{% block main_class %}wide{% endblock %}
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static',filename='matches.css') }}">
+  <script src="{{ url_for('static',filename='interactions.js') }}" defer></script>
+{% endblock %}
+{% block content %}
+<div class="match-page match-detail-page">
+    <a class="back" href="{{ url_for('matches_index') }}">比赛中心</a>
+    <section class="match-scoreboard">
+      <p>{{ game.competition }}{% if game.round %} · 第{{ game.round }}轮{% endif %}　{{ game.date }} {{ game.time }}</p>
+      <div>
+        <strong>{{ game.home }}</strong><b>{% if game.status == 'finished' %}{{ game.home_score }} : {{ game.away_score }}{% elif game.status == 'cancelled' %}已取消{% else %}VS{% endif %}</b><strong>{{ game.away }}</strong>
+      </div>
+      <p>{{ game.venue or '地点待定' }} · {{ {'scheduled':'未开始','finished':'已结束','cancelled':'已取消'}[game.status] }}</p>
+      {% if can_manage %}<a href="{{ url_for('matches_edit',match_id=game.id) }}">编辑比赛信息 →</a>{% endif %}
+    </section>
+    {% if can_leave or can_manage %}
+      <div class="match-actions-row">
+        {% if can_leave %}<a class="outline" href="{{ url_for('leave',_anchor='match-%d'%game.id) }}">{{ '修改比赛请假' if own_leave == 'active' else '请假' }}</a>{% endif %}
+        {% if own_leave == 'active' %}<span class="match-leave-state">已提交比赛请假</span>{% endif %}
+        {% if me.role == 'admin' or me.is_captain %}<a class="outline" href="{{ url_for('match_attendance_view',match_id=game.id) }}">比赛请假与出勤</a>{% endif %}
+      </div>
+    {% endif %}
+    {% if game.report or game.goals or game.assists %}
+      <section class="match-panel">
+        <h2>比赛战报</h2>
+        {% if game.report %}
+          <p class="match-pre">{{ game.report }}</p>
+        {% endif %}{% if game.goals %}
+          <p><b>进球</b>　{{ game.goals }}</p>
+        {% endif %}{% if game.assists %}
+          <p><b>助攻</b>　{{ game.assists }}</p>
+        {% endif %}
+      </section>
+    {% endif %}
+    {% if players or can_manage %}
+      <details class="match-panel match-roster">
+        <summary>参赛名单{% if players %}（{{ players|length }}）{% endif %}</summary>
+        {% for p in players %}
+          <div class="match-roster-row">
+            <div class="match-player-identity">
+              {% set player_avatar = url_for('avatar_image',uid=p.user_id) if p.user_id and p.owner_active and not p.owner_deleted else url_for('static',filename='avatars/default-1.jpg') %}
+              <img class="match-player-avatar" src="{{ player_avatar }}" alt="" width="40" height="40" loading="lazy"><span><strong>{{ p.name }}</strong> <small>{{ '首发' if p.lineup == 'starter' else '替补' }}</small></span>
+            </div>
+            {% if can_manage %}
+              <form method="post" action="{{ url_for('matches_player_manage',match_id=game.id,player_id=p.id) }}" class="match-tools">
+                {{ csrf_field() }}<button class="outline" name="action" value="{{ 'substitute' if p.lineup == 'starter' else 'starter' }}">设为{{ '替补' if p.lineup == 'starter' else '首发' }}</button><button class="outline" name="action" value="remove">移出名单</button>
+              </form>
+            {% endif %}
+          </div>
+        {% else %}
+          <p class="match-empty">参赛名单尚未添加。</p>
+        {% endfor %}
+        {% if can_manage %}
+          <details class="match-manage">
+            <summary>管理参赛名单</summary>
+            <form method="post" action="{{ url_for('matches_player_add',match_id=game.id) }}" class="match-form">
+              {{ csrf_field() }}
+              <label>
+                选择已注册队员<select name="user_id"><option value="">手动填写姓名</option>{% for u in users %}<option value="{{ u.id }}">{{ u.name }}{% if u.real_name %}（{{ u.real_name }}）{% endif %}</option>{% endfor %}</select>
+              </label>
+              <label>未注册球员姓名<input name="name" maxlength="100"></label>
+              <label>出场身份<select name="lineup"><option value="starter">首发</option><option value="substitute">替补</option></select></label>
+              <button class="smallbtn">添加球员</button>
+            </form>
+          </details>
+        {% endif %}
+        {% if me.role == 'admin' %}
+          <details class="match-manage">
+            <summary>管理比赛维护人员</summary>
+            <form method="post" action="{{ url_for('matches_managers') }}" class="match-form">
+              {{ csrf_field() }}
+              <label>
+                选择账号<select name="user_id">{% for u in users %}<option value="{{ u.id }}">{{ u.name }}{% if u.real_name %}（{{ u.real_name }}）{% endif %}{% if u.id in managers|map(attribute='user_id')|list %} · 已授权{% endif %}</option>{% endfor %}</select>
+              </label>
+              <div><button class="smallbtn" name="action" value="add">授权维护</button> <button class="outline" name="action" value="remove">取消授权</button></div>
+            </form>
+          </details>
+        {% endif %}
+      </details>
+    {% endif %}
+    <section id="reflections" class="match-reflections-feed">
+      <h2>赛后反思</h2>
+      {% for f in reflections %}
+        {% set avatar = url_for('avatar_image',uid=f.user_id) if f.author_active and not f.author_deleted else url_for('static',filename='avatars/default-1.jpg') %}
+        <article class="match-reflection-card" data-card>
+          <a class="match-reflection-avatar" href="{{ avatar }}" data-zoom aria-label="查看{{ f.author }}的头像"><img src="{{ avatar }}" alt="" width="40" height="40" loading="lazy"></a>
+          <div class="match-reflection-content">
+            <div class="match-reflection-head"><strong>{{ f.author }}</strong><time>{{ f.created[:16]|replace('T',' ') }}</time></div>
+            <p class="match-pre">{{ f.content }}</p>
+            {% if f.image %}<a class="match-image-link" href="{{ url_for('matches_reflection_image',reflection_id=f.id) }}" data-zoom aria-label="查看{{ f.author }}的赛后反思图片"><img class="match-image" src="{{ url_for('matches_reflection_image',reflection_id=f.id,thumb=1) }}"{% if f.image_w and f.image_h %} width="{{ f.image_w }}" height="{{ f.image_h }}"{% endif %} alt="{{ f.author }}的赛后反思图片" loading="lazy" decoding="async"></a>{% endif %}
+            <form method="post" action="{{ url_for('matches_reflection_action',match_id=game.id,reflection_id=f.id,action='like') }}" data-remote="like">
+              {{ csrf_field() }}<button class="textbtn">{{ '取消赞' if f.liked else '点赞' }} · {{ f.likes }}</button>
+            </form>
+            {% for comment in comments if comment.reflection_id == f.id %}
+              {% include '_match_comment.html' %}
+            {% endfor %}
+            <form class="match-comment-form" method="post" action="{{ url_for('matches_reflection_action',match_id=game.id,reflection_id=f.id,action='comment') }}" data-remote="comment">
+              {{ csrf_field() }}<input name="content" required maxlength="1000" placeholder="写评论"><button class="smallbtn">评论</button>
+            </form>
+            {% if f.user_id == me.id %}
+              <details>
+                <summary>编辑我的反思</summary>
+                <form class="stack" method="post" action="{{ url_for('matches_reflection_action',match_id=game.id,reflection_id=f.id,action='edit') }}">
+                  {{ csrf_field() }}<textarea name="content" required maxlength="3000">{{ f.content }}</textarea><button class="smallbtn">保存</button>
+                </form>
+              </details>
+            {% endif %}{% if f.user_id == me.id or can_manage %}
+              <form method="post" action="{{ url_for('matches_reflection_action',match_id=game.id,reflection_id=f.id,action='delete') }}" data-confirm="确定删除这条反思？">
+                {{ csrf_field() }}<button class="textbtn">删除反思</button>
+              </form>
+            {% endif %}
+          </div>
+        </article>
+      {% else %}
+        <p class="match-reflections-empty">还没有赛后反思{% if game.status == 'finished' %}，点右下角 + 发布。{% else %}。{% endif %}</p>
+      {% endfor %}
+    </section>
+    {% if game.status == 'finished' %}<a class="match-compose-button" href="{{ url_for('matches_reflection_new',match_id=game.id) }}" aria-label="发布赛后反思" title="发布赛后反思"><span aria-hidden="true">＋</span></a>{% endif %}
+  </div>
+{% endblock %}

@@ -1,0 +1,25 @@
+/* 首页顶部：下一场比赛压成两行，把首屏留给“去提交”。颜色取自队徽的暖色。 */
+.next-match{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:0 0 12px;padding:8px 12px;background:var(--surface);border:1px solid var(--warm-line);border-radius:12px;box-shadow:0 4px 20px var(--warm-shadow)}
+.next-match-game{display:flex;flex-direction:column;gap:2px;flex:1 1 160px;min-width:0;padding:2px 0;color:var(--ink)}
+.next-match-line{display:flex;align-items:center;gap:8px;min-width:0}
+.next-match-tag{flex:none;border-radius:999px;padding:2px 8px;background:var(--warm-wash);color:var(--warm-ink);font-size:11px;font-weight:700;letter-spacing:.04em}
+.next-match-line time{font-size:12px;font-weight:600;color:var(--warm-muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.next-match-teams{min-width:0;font-size:14px;font-weight:650;line-height:1.35;overflow-wrap:anywhere}
+.next-match-teams i{font-style:normal;font-size:12px;font-weight:400;color:var(--warm-muted);margin:0 5px}
+.next-match-leave,.next-match-centre{flex:none;display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:0 10px;border-radius:9px;font-size:13px;font-weight:600;white-space:nowrap}
+.next-match-leave{border:1px solid var(--warm-line);background:var(--warm-wash);color:var(--warm-ink)}
+.next-match-centre{color:var(--pitch-deep)}
+.next-match-empty{flex:1 1 auto;margin:0;font-size:13px;color:var(--muted)}
+@media(hover:hover){
+  .next-match-leave:hover{border-color:var(--warm-ink)}
+  .next-match-centre:hover{text-decoration:underline}
+  .next-match-game:hover .next-match-teams{color:var(--warm-ink)}
+}
+/* 手机上先收紧看板，让“去提交”留在一屏里 */
+@media(max-width:480px){
+  .board{padding:16px 16px 14px}
+  .board h1{font-size:22px}
+  .board-points strong{font-size:30px}
+  .board-status{margin-top:10px;font-size:14px}
+  .track{margin-top:14px}
+}

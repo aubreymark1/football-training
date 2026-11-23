@@ -2,10 +2,11 @@
 import datetime
 import io
 
-from flask import abort, flash, redirect, render_template, request, send_file, url_for
+from flask import abort, flash, jsonify, redirect, render_template, request, send_file, url_for
 from PIL import Image, UnidentifiedImageError
 
 from league_schedule import FIXTURES
+import match_leave
 
 
 def init_schema(c):
@@ -24,6 +25,10 @@ def init_schema(c):
         comment TEXT NOT NULL DEFAULT '', updated TEXT NOT NULL, PRIMARY KEY(player_id,user_id))''')
     c.execute('''CREATE TABLE IF NOT EXISTS match_reflections (id INTEGER PRIMARY KEY, match_id INTEGER NOT NULL REFERENCES matches(id),
         user_id INTEGER NOT NULL REFERENCES users(id), content TEXT NOT NULL, image BLOB, image_type TEXT, created TEXT NOT NULL)''')
+    # 记录图片尺寸，模板才能写 width/height，图片加载时不会把页面顶来顶去。
+    reflection_columns={row['name'] for row in c.execute('PRAGMA table_info(match_reflections)')}
+    if 'image_w' not in reflection_columns: c.execute('ALTER TABLE match_reflections ADD COLUMN image_w INTEGER')
+    if 'image_h' not in reflection_columns: c.execute('ALTER TABLE match_reflections ADD COLUMN image_h INTEGER')
     c.execute('''CREATE TABLE IF NOT EXISTS match_reflection_likes (reflection_id INTEGER NOT NULL REFERENCES match_reflections(id) ON DELETE CASCADE,
         user_id INTEGER NOT NULL REFERENCES users(id), PRIMARY KEY(reflection_id,user_id))''')
     c.execute('''CREATE TABLE IF NOT EXISTS match_reflection_comments (id INTEGER PRIMARY KEY,
@@ -49,6 +54,10 @@ def upcoming_matches(db, today):
 
 
 def register(app, *, db, current, login_required, now):
+    def wants_json():
+        # 点赞、评论先走 fetch；失败时前端退回整页提交。
+        return request.headers.get('X-Requested-With','').lower()=='fetch'
+
     def manager(c):
         u=current()
         return u['role']=='admin' or c.execute('SELECT 1 FROM match_managers WHERE user_id=?',(u['id'],)).fetchone() is not None
@@ -111,17 +120,22 @@ def register(app, *, db, current, login_required, now):
     def matches_detail(match_id):
         with db() as c:
             game=match(c,match_id); can_manage=manager(c); uid=current()['id']
-            players=c.execute('''SELECT * FROM match_players WHERE match_id=?
-                ORDER BY CASE lineup WHEN 'starter' THEN 0 ELSE 1 END,id''',(match_id,)).fetchall()
-            reflections=c.execute('''SELECT f.*,u.name author, EXISTS(SELECT 1 FROM match_reflection_likes l WHERE l.reflection_id=f.id AND l.user_id=?) liked,
+            players=c.execute('''SELECT p.*,u.active AS owner_active,u.deleted AS owner_deleted FROM match_players p
+                LEFT JOIN users u ON u.id=p.user_id WHERE p.match_id=?
+                ORDER BY CASE p.lineup WHEN 'starter' THEN 0 ELSE 1 END,p.id''',(match_id,)).fetchall()
+            reflections=c.execute('''SELECT f.*,u.name author,u.active AS author_active,u.deleted AS author_deleted,
+                EXISTS(SELECT 1 FROM match_reflection_likes l WHERE l.reflection_id=f.id AND l.user_id=?) liked,
                 (SELECT count(*) FROM match_reflection_likes l WHERE l.reflection_id=f.id) likes
                 FROM match_reflections f JOIN users u ON u.id=f.user_id WHERE f.match_id=? ORDER BY f.id DESC''',(uid,match_id)).fetchall()
             comments=c.execute('''SELECT x.*,u.name author FROM match_reflection_comments x JOIN users u ON u.id=x.user_id
                 JOIN match_reflections f ON f.id=x.reflection_id WHERE f.match_id=? ORDER BY x.id''',(match_id,)).fetchall()
             users=c.execute('SELECT id,name,real_name FROM users WHERE active=1 AND deleted=0 ORDER BY name').fetchall() if can_manage else []
             managers=c.execute('SELECT user_id FROM match_managers').fetchall() if current()['role']=='admin' else []
+            own_leave=c.execute("SELECT status FROM match_leave_requests WHERE match_id=? AND user_id=?",(match_id,uid)).fetchone()
+            can_leave=game['status']!='cancelled' and match_leave.match_start(game)>=match_leave.enabled_at(c)
         return render_template('matches_detail.html',game=game,players=players,reflections=reflections,comments=comments,
-                               can_manage=can_manage,users=users,managers=managers)
+                               can_manage=can_manage,users=users,managers=managers,can_leave=can_leave,
+                               own_leave=own_leave['status'] if own_leave else None)
 
     @app.post('/matches/managers')
     @login_required
@@ -183,7 +197,7 @@ def register(app, *, db, current, login_required, now):
     @app.post('/matches/<int:match_id>/reflections')
     @login_required
     def matches_reflect(match_id):
-        content=request.form.get('content','').strip(); upload=request.files.get('image'); raw=None; kind=None
+        content=request.form.get('content','').strip(); upload=request.files.get('image'); raw=None; kind=None; width=height=None
         if not content or len(content)>3000: abort(400)
         if upload and upload.filename:
             raw=upload.stream.read(7*1024*1024+1)
@@ -192,11 +206,12 @@ def register(app, *, db, current, login_required, now):
                 with Image.open(io.BytesIO(raw)) as im:
                     kind={'JPEG':'image/jpeg','PNG':'image/png','WEBP':'image/webp','GIF':'image/gif'}.get(im.format)
                     if not kind or im.width*im.height>16000000: raise ValueError()
+                    width,height=im.size
                     im.verify()
             except (UnidentifiedImageError,OSError,ValueError,Image.DecompressionBombError): abort(400)
         with db() as c:
             if match(c,match_id)['status']!='finished': abort(400)
-            c.execute('INSERT INTO match_reflections(match_id,user_id,content,image,image_type,created) VALUES(?,?,?,?,?,?)',(match_id,current()['id'],content,raw,kind,now()))
+            c.execute('INSERT INTO match_reflections(match_id,user_id,content,image,image_type,image_w,image_h,created) VALUES(?,?,?,?,?,?,?,?)',(match_id,current()['id'],content,raw,kind,width,height,now()))
         return back(match_id,'reflections')
 
     @app.get('/matches/reflections/<int:reflection_id>/image')
@@ -204,7 +219,15 @@ def register(app, *, db, current, login_required, now):
     def matches_reflection_image(reflection_id):
         with db() as c: row=c.execute('SELECT image,image_type FROM match_reflections WHERE id=?',(reflection_id,)).fetchone()
         if not row or not row['image']: abort(404)
-        response=send_file(io.BytesIO(row['image']),mimetype=row['image_type']); response.headers['Cache-Control']='private, no-store'; response.headers['X-Content-Type-Options']='nosniff'; return response
+        if request.args.get('thumb'):
+            try:
+                with Image.open(io.BytesIO(row['image'])) as im:
+                    im.draft('RGB',(640,640)); im.thumbnail((640,640))
+                    small=io.BytesIO(); im.convert('RGB').save(small,'JPEG',quality=72); small.seek(0)
+            except (OSError,ValueError): abort(404)
+            response=send_file(small,mimetype='image/jpeg',max_age=0)
+        else: response=send_file(io.BytesIO(row['image']),mimetype=row['image_type'])
+        response.headers['Cache-Control']='private, no-store'; response.headers['X-Content-Type-Options']='nosniff'; return response
 
     @app.post('/matches/<int:match_id>/reflections/<int:reflection_id>/<action>')
     @login_required
@@ -212,14 +235,21 @@ def register(app, *, db, current, login_required, now):
         with db() as c:
             row=c.execute('SELECT * FROM match_reflections WHERE id=? AND match_id=?',(reflection_id,match_id)).fetchone()
             if not row: abort(404)
-            uid=current()['id']
+            uid=current()['id']; can_manage=manager(c)
             if action=='like':
-                if c.execute('SELECT 1 FROM match_reflection_likes WHERE reflection_id=? AND user_id=?',(reflection_id,uid)).fetchone(): c.execute('DELETE FROM match_reflection_likes WHERE reflection_id=? AND user_id=?',(reflection_id,uid))
-                else: c.execute('INSERT INTO match_reflection_likes VALUES(?,?)',(reflection_id,uid))
+                removed=c.execute('DELETE FROM match_reflection_likes WHERE reflection_id=? AND user_id=?',(reflection_id,uid)).rowcount
+                if not removed: c.execute('INSERT INTO match_reflection_likes VALUES(?,?)',(reflection_id,uid))
+                if wants_json():
+                    liked=not removed; likes=c.execute('SELECT count(*) FROM match_reflection_likes WHERE reflection_id=?',(reflection_id,)).fetchone()[0]
+                    return jsonify(ok=True,liked=liked,likes=likes,label=('取消赞 · %d' if liked else '点赞 · %d')%likes)
             elif action=='comment':
                 content=request.form.get('content','').strip()
                 if not content or len(content)>1000: abort(400)
-                c.execute('INSERT INTO match_reflection_comments(reflection_id,user_id,content,created) VALUES(?,?,?,?)',(reflection_id,uid,content,now()))
+                comment_id=c.execute('INSERT INTO match_reflection_comments(reflection_id,user_id,content,created) VALUES(?,?,?,?)',(reflection_id,uid,content,now())).lastrowid
+                if wants_json():
+                    comment=c.execute('''SELECT x.*,u.name author FROM match_reflection_comments x
+                        JOIN users u ON u.id=x.user_id WHERE x.id=?''',(comment_id,)).fetchone()
+                    return jsonify(ok=True,html=render_template('_match_comment.html',comment=comment,game={'id':match_id},can_manage=can_manage))
             elif action=='edit':
                 if row['user_id']!=uid: abort(403)
                 content=request.form.get('content','').strip()

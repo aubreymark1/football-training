@@ -117,6 +117,7 @@
   document.addEventListener('submit', (event) => {
     const form = event.target;
     if (!form.matches('form[data-lock]') || event.defaultPrevented) return;
+    if (form.matches('form[data-remote]')) return; // 点赞、评论走 interactions.js，不锁按钮
     if (form.dataset.sent) { event.preventDefault(); return; }
     form.dataset.sent = '1';
     const button = event.submitter || $('button:not([type=button])', form);

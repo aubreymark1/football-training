@@ -1,9 +1,63 @@
-{% extends 'base.html' %}{% block title %}{{ content.title or '未命名计划' }} · 球队训练{% endblock %}{% block main_class %}wide{% endblock %}{% block content %}
-<link rel="stylesheet" href="{{ url_for('static',filename='plans.css') }}">
+{% extends 'base.html' %}
+{% block title %}{{ content.title or '未命名计划' }} · LINGNAN UNITED{% endblock %}
+{% block main_class %}wide{% endblock %}
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static',filename='plans.css') }}">
+{% endblock %}
+{% block content %}
 <a class="back" href="{{ url_for('team_plans_list') }}">每周训练计划</a>
-<header class="plan-detail-head"><div><p class="plans-kicker">{{ plan.week }} 当周 · 球队训练</p><h1>{{ content.title or '未命名计划' }}</h1><p class="page-lede">{{ content.schedule or '时间待定' }}{% if content.location %} · {{ content.location }}{% endif %}</p></div>{% if can_edit %}<a class="outline" href="{{ url_for('team_plans_edit',ident=plan.id) }}">编辑草稿</a>{% endif %}</header>
-{% if content.overview %}<div class="plan-overview"><strong>本周目标</strong><p>{{ content.overview }}</p></div>{% endif %}
-<section class="plan-reading"><div><div class="section-head"><h2>训练内容</h2><span class="hint">{{ content['items']|length }} 项</span></div><div class="plan-pages" id="published-pages">{% for item in content['items'] %}<article class="card plan-drill" data-plan-page><div class="drill-heading"><span class="drill-number">{{ '%02d'|format(loop.index) }}</span><div><h3>{{ item.title or '未命名项目' }}</h3><p>{% if item.minutes %}{{ item.minutes }} 分钟 · {% endif %}{{ {'fitness':'体能','ball':'有球','tactics':'战术','other':'其他'}[item.kind] }}</p></div></div>{% if item.goal %}<p><strong>目标：</strong>{{ item.goal }}</p>{% endif %}{% if item.steps %}<p class="drill-steps">{{ item.steps }}</p>{% endif %}{% if item.board %}<div class="board-mount" data-editable="false"><script type="application/json" class="board-data">{{ item.board|tojson }}</script></div>{% endif %}</article>{% else %}<div class="empty">暂无训练项目。</div>{% endfor %}</div></div>
-<aside><div class="section-head"><h2>参考视频</h2></div>{% for video in content.videos %}<a class="card video-link" href="{{ video.url }}" target="_blank" rel="noopener noreferrer"><strong>{{ video.title }}</strong><span>{{ video.source }} ↗</span></a>{% else %}<div class="empty">暂未添加参考视频。</div>{% endfor %}</aside></section>
-<script src="{{ url_for('static',filename='plans-board.js') }}" defer></script><script src="{{ url_for('static',filename='plans-pager.js') }}" defer></script><script src="{{ url_for('static',filename='plans-view.js') }}" defer></script>
+  <header class="plan-detail-head">
+    <div>
+      <p class="plans-kicker">{{ plan.week }} 当周 · 球队训练</p>
+      <h1>{{ content.title or '未命名计划' }}</h1>
+      <p class="page-lede">{{ content.schedule or '时间待定' }}{% if content.location %} · {{ content.location }}{% endif %}</p>
+    </div>
+    {% if can_edit %}<a class="outline" href="{{ url_for('team_plans_edit',ident=plan.id) }}">编辑草稿</a>{% endif %}
+  </header>
+  {% if content.overview %}
+    <div class="plan-overview"><strong>本周目标</strong><p>{{ content.overview }}</p></div>
+  {% endif %}
+  <section class="plan-reading">
+    <div>
+      <div class="section-head">
+        <h2>训练内容</h2>
+        <span class="hint">{{ content['items']|length }} 项</span>
+      </div>
+      <div class="plan-pages" id="published-pages">
+        {% for item in content['items'] %}
+          <article class="card plan-drill" data-plan-page>
+            <div class="drill-heading">
+              <span class="drill-number">{{ '%02d'|format(loop.index) }}</span>
+              <div>
+                <h3>{{ item.title or '未命名项目' }}</h3>
+                <p>{% if item.minutes %}{{ item.minutes }} 分钟 · {% endif %}{{ {'fitness':'体能','ball':'有球','tactics':'战术','other':'其他'}[item.kind] }}</p>
+              </div>
+            </div>
+            {% if item.goal %}
+              <p><strong>目标：</strong>{{ item.goal }}</p>
+            {% endif %}{% if item.steps %}
+              <p class="drill-steps">{{ item.steps }}</p>
+            {% endif %}{% if item.board %}
+              <div class="board-mount" data-editable="false">
+                <script type="application/json" class="board-data">{{ item.board|tojson }}</script>
+              </div>
+            {% endif %}
+          </article>
+        {% else %}
+          <div class="empty">暂无训练项目。</div>
+        {% endfor %}
+      </div>
+    </div>
+    <aside>
+      <div class="section-head">
+        <h2>参考视频</h2>
+      </div>
+      {% for video in content.videos %}<a class="card video-link" href="{{ video.url }}" target="_blank" rel="noopener noreferrer"><strong>{{ video.title }}</strong><span>{{ video.source }} ↗</span></a>{% else %}
+        <div class="empty">暂未添加参考视频。</div>
+      {% endfor %}
+    </aside>
+  </section>
+  <script src="{{ url_for('static',filename='plans-board.js') }}" defer></script>
+  <script src="{{ url_for('static',filename='plans-pager.js') }}" defer></script>
+  <script src="{{ url_for('static',filename='plans-view.js') }}" defer></script>
 {% endblock %}

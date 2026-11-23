@@ -1,0 +1,8 @@
+<div class="moment-comment">
+  <p><strong>{{ comment.author }}：</strong>{{ comment.content }}</p>
+  {% if comment.user_id == me.id or me.role == 'admin' %}
+    <form method="post" action="{{ url_for('moments_comment_delete',rid=post.id,comment_id=comment.id) }}" data-confirm="删除这条评论？" data-confirm-action="删除">
+      {{ csrf_field() }}<input type="hidden" name="before" value="{{ before }}"><button type="submit" aria-label="删除评论">删除</button>
+    </form>
+  {% endif %}
+</div>

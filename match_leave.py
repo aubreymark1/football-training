@@ -30,12 +30,19 @@ def enabled_at(c):
     return datetime.datetime.fromisoformat(c.execute("SELECT value FROM app_settings WHERE key='match_leave_enabled_at'").fetchone()['value'])
 
 
+def counts(c, uid):
+    """有效请假次数，账号页和请假页共用。"""
+    training=c.execute('''SELECT count(*) FROM training_leave_requests l JOIN training_sessions s ON s.id=l.session_id
+        WHERE l.user_id=? AND l.status='active' AND s.status='open' ''',(uid,)).fetchone()[0]
+    match=c.execute('''SELECT count(*) FROM match_leave_requests l JOIN matches m ON m.id=l.match_id
+        WHERE l.user_id=? AND l.status='active' AND m.status!='cancelled' ''',(uid,)).fetchone()[0]
+    return dict(training=training, match=match)
+
+
 def account_data(c, uid, stamp):
     instant=datetime.datetime.fromisoformat(stamp)
-    training_count=c.execute('''SELECT count(*) FROM training_leave_requests l JOIN training_sessions s ON s.id=l.session_id
-        WHERE l.user_id=? AND l.status='active' AND s.status='open' ''',(uid,)).fetchone()[0]
-    match_count=c.execute('''SELECT count(*) FROM match_leave_requests l JOIN matches m ON m.id=l.match_id
-        WHERE l.user_id=? AND l.status='active' AND m.status!='cancelled' ''',(uid,)).fetchone()[0]
+    summary=counts(c,uid)
+    training_count, match_count = summary['training'], summary['match']
     training=c.execute('''SELECT s.id,s.title,s.starts_at,s.location,l.status leave_status,l.reason,l.timely
         FROM training_sessions s LEFT JOIN training_leave_requests l ON l.session_id=s.id AND l.user_id=?
         WHERE s.status='open' ORDER BY CASE WHEN s.starts_at>=? THEN 0 ELSE 1 END,
@@ -69,6 +76,15 @@ def register(app, *, db, current, login_required, now):
         if game is None:abort(404)
         return game
 
+    def back_to(mid):
+        return redirect(url_for('leave',_anchor='match-%d'%mid))
+
+    @app.get('/leave')
+    @login_required
+    def leave():
+        with db() as c: state=account_data(c,current()['id'],now())
+        return render_template('leave.html',leave=state)
+
     @app.post('/account/match-leave/<int:match_id>')
     @login_required
     def account_match_leave(match_id):
@@ -86,7 +102,7 @@ def register(app, *, db, current, login_required, now):
                     VALUES(?,?,?,?,?,?,'active') ON CONFLICT(match_id,user_id) DO UPDATE SET reason=excluded.reason,
                     submitted_at=excluded.submitted_at,deadline_at_submission=excluded.deadline_at_submission,timely=excluded.timely,status='active' ''',
                     (match_id,uid,reason,stamp.isoformat(timespec='seconds'),deadline.isoformat(timespec='seconds'),int(submitted_on_time(start,stamp))))
-        flash('比赛请假已保存。');return redirect(url_for('account',_anchor='leave'))
+        flash('比赛请假已保存。');return back_to(match_id)
 
     @app.post('/account/match-leave/<int:match_id>/cancel')
     @login_required
@@ -95,7 +111,7 @@ def register(app, *, db, current, login_required, now):
             c.execute('BEGIN IMMEDIATE');game=get_game(c,match_id)
             if game['status']!='scheduled' or datetime.datetime.fromisoformat(now())>=match_start(game):abort(400)
             c.execute("UPDATE match_leave_requests SET status='cancelled' WHERE match_id=? AND user_id=? AND status='active'",(match_id,current()['id']))
-        flash('已取消比赛请假。');return redirect(url_for('account',_anchor='leave'))
+        flash('已取消比赛请假。');return back_to(match_id)
 
     @app.get('/matches/<int:match_id>/attendance')
     @login_required

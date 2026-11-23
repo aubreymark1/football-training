@@ -1,2 +1,7 @@
-{% extends 'base.html' %}{% block content %}<a class="back" href="{{ url_for('home') }}">本周任务</a><h1>自主训练</h1><p class="page-lede">自由上传训练记录，不绑定每周任务；管理员审核后酌情给分，单次最多 50 分。</p>
-{% set submit_label='提交自主训练' %}{% set privacy_hint='提交后，运动类型、时长、备注和截图会自动显示在 Moments，所有登录队员可见。用力程度和审核信息仍仅本人及管理员可见；自主训练积分由管理员审核后确定。' %}{% include '_record_form.html' %}{% endblock %}
+{% extends 'base.html' %}
+{% block title %}自主训练 · LINGNAN UNITED{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('home') }}">本周任务</a>
+  <h1>自主训练</h1>
+  <p class="page-lede">自由上传训练记录，不绑定每周任务；管理员审核后酌情给分，单次最多 50 分。</p>
+  {% set submit_label='提交自主训练' %}{% set privacy_hint='提交后，运动类型、时长、备注和截图会自动显示在 Moments，所有登录队员可见。用力程度和审核信息仍仅本人及管理员可见；自主训练积分由管理员审核后确定。' %}{% include '_record_form.html' %}{% endblock %}

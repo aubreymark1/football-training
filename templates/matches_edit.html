@@ -1,9 +1,39 @@
-{% extends 'base.html' %}{% block title %}编辑比赛 · LINGNAN UNITED{% endblock %}{% block main_class %}wide{% endblock %}{% block content %}
-<link rel="stylesheet" href="{{ url_for('static',filename='matches.css') }}"><div class="match-page"><a class="match-back" href="{{ url_for('matches_index') }}">← 比赛中心</a><h1>{{ '编辑比赛' if game else '添加比赛' }}</h1>
-<form class="match-panel match-form" method="post"><input type="hidden" name="csrf" value="{{ csrf_token }}"><div class="match-fields">
-<label>赛事名称<input name="competition" required maxlength="100" value="{{ game.competition if game else '' }}" placeholder="如南校联赛、友谊赛"></label><label>轮次（选填）<input name="round" value="{{ game.round if game else '' }}"></label>
-<label>日期<input type="date" name="date" required value="{{ game.date if game else '' }}"></label><label>时间<input type="time" name="time" required value="{{ game.time if game else '' }}"></label>
-<label>主队<input name="home" required maxlength="100" value="{{ game.home if game else '岭南学院' }}"></label><label>客队<input name="away" required maxlength="100" value="{{ game.away if game else '' }}"></label>
-<label>地点<input name="venue" value="{{ game.venue if game else '' }}"></label><label>状态<select name="status">{% for key,label in [('scheduled','未开始'),('finished','已结束'),('cancelled','已取消')] %}<option value="{{ key }}" {% if game and game.status == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
-<label>主队比分<input type="number" min="0" max="99" name="home_score" value="{{ game.home_score if game and game.home_score is not none else '' }}"></label><label>客队比分<input type="number" min="0" max="99" name="away_score" value="{{ game.away_score if game and game.away_score is not none else '' }}"></label></div>
-<label>比赛战报<textarea name="report" rows="5" maxlength="5000">{{ game.report if game else '' }}</textarea></label><label>进球记录<textarea name="goals" rows="2" maxlength="5000">{{ game.goals if game else '' }}</textarea></label><label>助攻记录<textarea name="assists" rows="2" maxlength="5000">{{ game.assists if game else '' }}</textarea></label><button class="match-button">保存比赛</button></form></div>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}编辑比赛 · LINGNAN UNITED{% endblock %}
+{% block main_class %}wide{% endblock %}
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static',filename='matches.css') }}">
+{% endblock %}
+{% block content %}
+<div class="match-page">
+    <a class="back" href="{{ url_for('matches_index') }}">比赛中心</a>
+    <h1>{{ '编辑比赛' if game else '添加比赛' }}</h1>
+    <form class="card stack" method="post">
+      {{ csrf_field() }}
+      <div class="match-fields">
+        <label>
+          赛事名称<input name="competition" required maxlength="100" value="{{ game.competition if game else '' }}" placeholder="如南校联赛、友谊赛">
+        </label>
+        <label>轮次（选填）<input name="round" value="{{ game.round if game else '' }}"></label>
+        <label>日期<input type="date" name="date" required value="{{ game.date if game else '' }}"></label>
+        <label>时间<input type="time" name="time" required value="{{ game.time if game else '' }}"></label>
+        <label>主队<input name="home" required maxlength="100" value="{{ game.home if game else '岭南学院' }}"></label>
+        <label>客队<input name="away" required maxlength="100" value="{{ game.away if game else '' }}"></label>
+        <label>地点<input name="venue" value="{{ game.venue if game else '' }}"></label>
+        <label>
+          状态<select name="status">{% for key,label in [('scheduled','未开始'),('finished','已结束'),('cancelled','已取消')] %}<option value="{{ key }}" {% if game and game.status == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+        </label>
+        <label>
+          主队比分<input type="number" min="0" max="99" name="home_score" value="{{ game.home_score if game and game.home_score is not none else '' }}">
+        </label>
+        <label>
+          客队比分<input type="number" min="0" max="99" name="away_score" value="{{ game.away_score if game and game.away_score is not none else '' }}">
+        </label>
+      </div>
+      <label>比赛战报<textarea name="report" rows="5" maxlength="5000">{{ game.report if game else '' }}</textarea></label>
+      <label>进球记录<textarea name="goals" rows="2" maxlength="5000">{{ game.goals if game else '' }}</textarea></label>
+      <label>助攻记录<textarea name="assists" rows="2" maxlength="5000">{{ game.assists if game else '' }}</textarea></label>
+      <button class="smallbtn">保存比赛</button>
+    </form>
+  </div>
+{% endblock %}

@@ -1,11 +1,23 @@
-{% extends 'base.html' %}{% block content %}
-<div class="headline"><div><h1>球队管理</h1><p class="page-lede">{{ active_week }} 这周</p></div></div>
-{% if missing_required %}<div class="notice warn-notice" style="margin:16px 0 0"><span>本周还没有必做任务。记得在「训练任务」里发布，否则未完成扣分规则本周不会生效。</span><a href="{{ url_for('admin',section='tasks') }}">去发布</a></div>{% endif %}
-<div class="management-grid" style="margin-top:16px">
-<a class="manage-card" href="{{ url_for('admin',section='review') }}"><span><strong>训练记录审核</strong><small>{{ pending_records }} 条待审核</small></span>{% if pending_records %}<span class="manage-count" aria-hidden="true">{{ pending_records }}</span>{% endif %}</a>
-<a class="manage-card" href="{{ url_for('admin',section='overview') }}"><span><strong>本周完成情况</strong><small>查看全队必做任务</small></span></a>
-<a class="manage-card" href="{{ url_for('admin',section='tasks') }}"><span><strong>训练任务</strong><small>发布和编辑每周任务</small></span></a>
-<a class="manage-card" href="{{ url_for('admin',section='shop') }}"><span><strong>礼品与兑换</strong><small>{{ pending_orders }} 条兑换待处理</small></span>{% if pending_orders %}<span class="manage-count" aria-hidden="true">{{ pending_orders }}</span>{% endif %}</a>
-<a class="manage-card" href="{{ url_for('reminders') }}"><span><strong>训练提醒</strong><small>{{ pending_reminders }} 人本周未上传记录</small></span></a>
-<a class="manage-card" href="{{ url_for('admin',section='members') }}"><span><strong>成员与邀请</strong><small>成员、邀请码和个人报告</small></span></a>
-</div>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}球队管理 · LINGNAN UNITED{% endblock %}
+{% block content %}
+<div class="headline">
+    <div>
+      <h1>球队管理</h1>
+      <p class="page-lede">{{ active_week }} 这周</p>
+    </div>
+  </div>
+  {% if missing_required %}
+    <div class="notice warn-notice mt-16">
+      <span>本周还没有必做任务。记得在「训练任务」里发布，否则未完成扣分规则本周不会生效。</span><a href="{{ url_for('admin',section='tasks') }}">去发布</a>
+    </div>
+  {% endif %}
+  <div class="management-grid mt-16">
+    <a class="manage-card" href="{{ url_for('admin',section='review') }}"><span><strong>训练记录审核</strong><small>{{ pending_records }} 条待审核</small></span>{% if pending_records %}<span class="manage-count" aria-hidden="true">{{ pending_records }}</span>{% endif %}</a>
+    <a class="manage-card" href="{{ url_for('admin',section='overview') }}"><span><strong>本周完成情况</strong><small>查看全队必做任务</small></span></a>
+    <a class="manage-card" href="{{ url_for('admin',section='tasks') }}"><span><strong>训练任务</strong><small>发布和编辑每周任务</small></span></a>
+    <a class="manage-card" href="{{ url_for('admin',section='shop') }}"><span><strong>礼品与兑换</strong><small>{{ pending_orders }} 条兑换待处理</small></span>{% if pending_orders %}<span class="manage-count" aria-hidden="true">{{ pending_orders }}</span>{% endif %}</a>
+    <a class="manage-card" href="{{ url_for('reminders') }}"><span><strong>训练提醒</strong><small>{{ pending_reminders }} 人本周未上传记录</small></span></a>
+    <a class="manage-card" href="{{ url_for('admin',section='members') }}"><span><strong>成员与邀请</strong><small>成员、邀请码和个人报告</small></span></a>
+  </div>
+{% endblock %}

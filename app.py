@@ -13,6 +13,7 @@ import hashlib, hmac
 from pathlib import Path
 from zoneinfo import ZoneInfo
 from flask import Flask, request, redirect, url_for, render_template, session, abort, send_file, flash, jsonify, Response, stream_with_context
+from markupsafe import Markup
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -228,10 +229,16 @@ def unavailable_plans():
 @app.before_request
 def csrf():
     if request.method=='POST' and (not session.get('csrf') or not secrets.compare_digest(session['csrf'],request.form.get('csrf',''))): abort(400)
+RECORD_STATUS={'pending':'待审核','approved':'已通过','rejected':'未通过'}
+def status_label(key):
+    """训练记录的审核状态文案；模板里统一用 status_label()，别再各写一份映射。"""
+    return RECORD_STATUS.get(key,key)
+
 @app.context_processor
 def ctx():
     if 'csrf' not in session: session['csrf']=secrets.token_urlsafe(24)
-    return dict(me=current(), csrf_token=session['csrf'], active_week=week(), plans_enabled=plans_enabled())
+    token=session['csrf']
+    return dict(me=current(), csrf_token=token, csrf_field=lambda: Markup('<input type="hidden" name="csrf" value="%s">') % token, status_label=status_label, active_week=week(), plans_enabled=plans_enabled())
 def positive(name, lower, upper):
     try: value=int(request.form.get(name,''))
     except ValueError: abort(400)
@@ -370,21 +377,23 @@ def join():
 @login_required
 def home():
     settle_required_penalties()
-    u=current(); w=week()
+    u=current(); w=week(); today=datetime.datetime.now(TZ).date()
+    fixtures=match_center.upcoming_matches(db, today)
     with db() as c:
         tasks=c.execute('''SELECT t.*, (SELECT count(*) FROM records r WHERE r.task_id=t.id AND r.user_id=? AND r.status='approved') done, (SELECT count(*) FROM records r WHERE r.task_id=t.id AND r.user_id=? AND r.status='pending') pending, EXISTS(SELECT 1 FROM exemptions e WHERE e.task_id=t.id AND e.user_id=?) exempt FROM tasks t WHERE t.deleted=0 AND week=? ORDER BY kind DESC,id''',(u['id'],u['id'],u['id'],w)).fetchall()
         points=c.execute('SELECT coalesce(sum(amount),0) FROM ledger WHERE user_id=?',(u['id'],)).fetchone()[0]
         records=c.execute("SELECT r.*,coalesce(l.amount,0) AS earned_points,(l.id IS NOT NULL) AS has_points_entry,coalesce(t.kind,'free') AS task_kind,coalesce(t.title,'自主训练') AS title FROM records r LEFT JOIN tasks t ON t.id=r.task_id LEFT JOIN ledger l ON l.record_id=r.id WHERE r.user_id=? ORDER BY r.id DESC LIMIT 5",(u['id'],)).fetchall()
         report=c.execute('SELECT * FROM reports WHERE user_id=? ORDER BY week DESC LIMIT 1',(u['id'],)).fetchone()
         strip=week_strip(c,u['id'])
+        leave_cutoff=match_leave.enabled_at(c)
     standings,_,_=team_standings()
     mine=next((row for row in standings if row['id']==u['id']),None)
     required=[t for t in tasks if t['kind']=='required']
     modules=[(code,label,[t for t in tasks if t['kind']=='bonus' and (t['module'] or 'fitness')==code]) for code,label in (('fitness','体能训练'),('strength','力量训练'),('ball','有球训练'))]
     exempt_all=bool(required) and all(t['exempt'] for t in required)
-    fixtures = match_center.upcoming_matches(db, datetime.datetime.now(TZ).date())
+    leave_ready={g['id'] for g in fixtures if match_leave.match_start(g)>=leave_cutoff}
     update_notice = site_updates.CURRENT if u['update_seen'] < site_updates.CURRENT['version'] else None
-    return render_template('home.html',tasks=tasks,required=required,modules=modules,has_bonus=any(items for _,_,items in modules),points=points,records=records,report=report,standing=mine,strip=strip,required_done=sum(1 for t in required if t['done'] or t['exempt']),exempt_all=exempt_all,fixtures=fixtures,update_notice=update_notice)
+    return render_template('home.html',tasks=tasks,required=required,modules=modules,has_bonus=any(items for _,_,items in modules),points=points,records=records,report=report,standing=mine,strip=strip,required_done=sum(1 for t in required if t['done'] or t['exempt']),exempt_all=exempt_all,fixtures=fixtures,leave_ready=leave_ready,update_notice=update_notice)
 @app.route('/submit/<int:tid>',methods=['GET','POST'])
 @login_required
 def submit(tid):
@@ -654,8 +663,8 @@ def account():
         session.clear(); flash('密码已修改，请重新登录。'); return redirect(url_for('login'))
     with db() as c:
         passkeys=c.execute('SELECT id,label,created,last_used FROM passkeys WHERE user_id=? ORDER BY id',(current()['id'],)).fetchall()
-        leave=match_leave.account_data(c,current()['id'],now())
-    return render_template('account.html',passkeys=passkeys,leave=leave)
+        leave_counts=match_leave.counts(c,current()['id'])
+    return render_template('account.html',passkeys=passkeys,leave_counts=leave_counts)
 import passkeys as passkey_module
 passkey_module.setup(app,db,current,login_required,now)
 @app.post('/account/real-name')
@@ -897,11 +906,6 @@ def search_web(query,kind):
     req=urllib.request.Request('https://api.deepseek.com/v1/tools/search',data=json.dumps(payload,ensure_ascii=False).encode(),headers={'Authorization':'Bearer '+key,'Content-Type':'application/json'})
     with urllib.request.urlopen(req,timeout=20) as response: data=json.load(response)
     return search_policy.filter_results(data.get('results',[]),kind)
-
-@app.get('/assistant')
-@login_required
-def assistant_page():
-    return render_template('assistant.html')
 
 @app.post('/assistant/message')
 @login_required

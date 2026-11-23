@@ -1,8 +1,67 @@
-{% extends 'base.html' %}{% block title %}球队礼品开箱{% endblock %}{% block content %}
-<link rel="stylesheet" href="{{ url_for('static',filename='lottery.css') }}">
-<section class="case-page"><a class="case-back" href="{{ url_for('rewards') }}">← 返回积分商城</a><div class="case-header"><div><p class="case-kicker">LINGNAN FOOTBALL · REWARDS</p><h1>球队礼品开箱</h1><p>训练积累的每一分，都有机会开出惊喜。</p></div><div class="case-balance"><small>可用积分</small><strong id="case-balance">{{ points }}</strong></div></div>
-<div class="case-stage"><div class="case-stage-label"><span>礼品箱</span><span>每次 1 积分</span></div><div class="case-reel" aria-hidden="true"><div class="case-pointer"></div><div class="case-track" id="case-track"></div></div><div class="case-result" id="case-result" role="status">选择你的心仪奖品，开启礼品箱</div><div class="case-controls"><label for="case-wish">心仪保底奖品</label><select id="case-wish">{% for item in items %}<option value="{{ item.id }}" {% if item.id==wish_id and item.stock>0 %}selected{% endif %} {% if item.stock<1 %}disabled{% endif %}>{{ item.name }}{% if item.stock<1 %}（已兑完）{% endif %}</option>{% endfor %}</select><button id="case-open" type="button" {% if not items or points<1 %}disabled{% endif %}>开启礼品箱 <span>· 1 积分</span></button></div><div class="case-progress"><span>保底进度 <strong id="case-progress">{{ progress }}</strong> / 50</span><span>第 50 抽必出礼品</span><div class="case-progress-bar"><i id="case-bar" style="width:{{ progress*2 }}%"></i></div></div></div>
-<div class="case-section"><div><h2>礼品箱内容</h2><p>奖品与直接兑换共享库存，售罄奖品暂不参与抽取。</p></div><div class="case-grid">{% for item in items %}<article class="case-prize"><img src="{{ url_for('static',filename='lottery/'+item.image) }}" alt=""><strong>{{ item.name }}</strong><span>剩余 {{ item.stock }}</span></article>{% endfor %}<article class="case-prize case-points"><strong>0.5 积分</strong></article><article class="case-prize case-points"><strong>1 积分</strong></article><article class="case-prize case-points"><strong>2 积分</strong></article><article class="case-prize case-points"><strong>谢谢参与</strong></article></div></div>
-<details class="case-rules"><summary>查看开箱与保底规则</summary><p>每次消耗 1 积分。每第 50 次必得礼品，有机会获得所选心仪奖品，也可能获得其他有库存的礼品。普通抽奖获得礼品不重置保底进度；售罄奖品暂不参与抽取。保底时至少需要两种有库存的礼品。</p><p>礼品与直接兑换共享库存，中奖后请在“我的兑换记录”查看并联系管理员领取。积分奖励直接到账。</p></details>
-{% if history %}<details class="case-rules"><summary>最近开箱记录</summary>{% for row in history %}<p>{{ row.created[:10] }} · {{ row.result }}</p>{% endfor %}</details>{% endif %}</section>
-{% set prize_data=namespace(items=[]) %}{% for item in items %}{% set prize_data.items=prize_data.items + [{'name':item.name,'image':item.image}] %}{% endfor %}<script id="case-data" type="application/json">{{ {'items':prize_data.items,'csrf':csrf_token,'drawUrl':url_for('lottery_draw'),'wishUrl':url_for('lottery_wish'),'assetBase':url_for('static',filename='lottery/__FILE__')}|tojson }}</script><script src="{{ url_for('static',filename='lottery.js') }}" defer></script>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}积分抽奖 · LINGNAN UNITED{% endblock %}
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static',filename='lottery.css') }}">
+{% endblock %}
+{% block content %}
+<section class="case-page">
+    <a class="case-back" href="{{ url_for('rewards') }}">← 返回积分商城</a>
+    <div class="case-header">
+      <div>
+        <p class="case-kicker">LINGNAN FOOTBALL · REWARDS</p>
+        <h1>球队礼品开箱</h1>
+        <p>训练积累的每一分，都有机会开出惊喜。</p>
+      </div>
+      <div class="case-balance"><small>可用积分</small><strong id="case-balance">{{ points }}</strong></div>
+    </div>
+    <div class="case-stage">
+      <div class="case-stage-label"><span>礼品箱</span><span>每次 1 积分</span></div>
+      <div class="case-reel" aria-hidden="true">
+        <div class="case-pointer"></div>
+        <div class="case-track" id="case-track"></div>
+      </div>
+      <div class="case-result" id="case-result" role="status">选择你的心仪奖品，开启礼品箱</div>
+      <div class="case-controls">
+        <label for="case-wish">心仪保底奖品</label>
+        <select id="case-wish">{% for item in items %}<option value="{{ item.id }}" {% if item.id==wish_id and item.stock>0 %}selected{% endif %} {% if item.stock<1 %}disabled{% endif %}>{{ item.name }}{% if item.stock<1 %}（已兑完）{% endif %}</option>{% endfor %}</select><button id="case-open" type="button" {% if not items or points<1 %}disabled{% endif %}>开启礼品箱 <span>· 1 积分</span></button>
+      </div>
+      <div class="case-progress">
+        <span>保底进度 <strong id="case-progress">{{ progress }}</strong> / 50</span><span>第 50 抽必出礼品</span>
+        <div class="case-progress-bar"><i id="case-bar" style="width:{{ progress*2 }}%"></i></div>
+      </div>
+    </div>
+    <div class="case-section">
+      <div>
+        <h2>礼品箱内容</h2>
+        <p>奖品与直接兑换共享库存，售罄奖品暂不参与抽取。</p>
+      </div>
+      <div class="case-grid">
+        {% for item in items %}
+          <article class="case-prize">
+            <img src="{{ url_for('static',filename='lottery/'+item.image) }}" alt=""><strong>{{ item.name }}</strong><span>剩余 {{ item.stock }}</span>
+          </article>
+        {% endfor %}
+        <article class="case-prize case-points"><strong>0.5 积分</strong></article>
+        <article class="case-prize case-points"><strong>1 积分</strong></article>
+        <article class="case-prize case-points"><strong>2 积分</strong></article>
+        <article class="case-prize case-points"><strong>谢谢参与</strong></article>
+      </div>
+    </div>
+    <details class="case-rules">
+      <summary>查看开箱与保底规则</summary>
+      <p>每次消耗 1 积分。每第 50 次必得礼品，有机会获得所选心仪奖品，也可能获得其他有库存的礼品。普通抽奖获得礼品不重置保底进度；售罄奖品暂不参与抽取。保底时至少需要两种有库存的礼品。</p>
+      <p>礼品与直接兑换共享库存，中奖后请在“我的兑换记录”查看并联系管理员领取。积分奖励直接到账。</p>
+    </details>
+    {% if history %}
+      <details class="case-rules">
+        <summary>最近开箱记录</summary>
+        {% for row in history %}
+          <p>{{ row.created[:10] }} · {{ row.result }}</p>
+        {% endfor %}
+      </details>
+    {% endif %}
+  </section>
+  {% set prize_data=namespace(items=[]) %}{% for item in items %}{% set prize_data.items=prize_data.items + [{'name':item.name,'image':item.image}] %}{% endfor %}
+  <script id="case-data" type="application/json">{{ {'items':prize_data.items,'csrf':csrf_token,'drawUrl':url_for('lottery_draw'),'wishUrl':url_for('lottery_wish'),'assetBase':url_for('static',filename='lottery/__FILE__')}|tojson }}</script>
+  <script src="{{ url_for('static',filename='lottery.js') }}" defer></script>
+{% endblock %}

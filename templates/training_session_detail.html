@@ -1,5 +1,70 @@
-{% extends 'base.html' %}{% block title %}{{ training.title }} · LINGNAN UNITED{% endblock %}{% block content %}<link rel="stylesheet" href="{{ url_for('static',filename='training-leave.css') }}">
-<div class="training-page"><a class="back" href="{{ url_for('training_sessions') }}">集体训练</a><section class="training-hero"><div class="training-card-top"><h1>{{ training.title }}</h1>{% if training.status == 'cancelled' %}<span class="training-tag">已取消</span>{% endif %}</div><p>{{ training.starts_at[:16]|replace('T',' ') }} 至 {{ training.ends_at[:16]|replace('T',' ') }}{% if training.location %} · {{ training.location }}{% endif %}</p><p>请假截止：{{ deadline.strftime('%Y-%m-%d %H:%M') }}</p><div class="training-stats"><span><b>{{ expected }}</b> 预计到场</span><span><b>{{ leave_count }}</b> 人请假</span></div><small>预计到场按所有活跃账号中未请假人数估算，实际出勤由队长确认。</small></section>
-{% if can_manage and training.status == 'open' %}<div class="training-actions">{% if not started %}<a class="outline" href="{{ url_for('training_session_edit',session_id=training.id) }}">编辑训练</a>{% endif %}<form method="post" action="{{ url_for('training_session_cancel',session_id=training.id) }}"><input type="hidden" name="csrf" value="{{ csrf_token }}"><button class="outline" data-confirm="确定取消本场训练？">取消训练</button></form></div>{% endif %}
-<section class="card training-section"><h2>请假</h2><p>请在个人账号页提交或查看训练与比赛请假。</p><a class="outline" href="{{ url_for('account',_anchor='leave') }}">我的请假</a></section>
-{% if can_manage %}<section class="card training-section"><h2>队员与出勤</h2><p class="hint">{{ '请在训练结束后确认实际出勤。' if not ended else '仅确认实际情况；逾期请假且缺席计为旷训。' }}</p>{% for member in roster %}<article class="training-member"><div><strong>{{ member.real_name or member.name }}</strong>{% if member.real_name %} <small>（{{ member.name }}）</small>{% endif %}<p>{% if member.leave_status == 'active' %}<span class="{{ 'training-ok' if member.timely else 'training-late' }}">{{ '按时请假' if member.timely else '逾期请假' }}</span> · {{ member.reason }}{% else %}<span class="hint">未请假</span>{% endif %}</p>{% if member.attendance %}<p>出勤：{% if member.attendance == 'attended' %}已出勤{% elif member.leave_status == 'active' and member.timely %}请假缺席{% else %}<strong class="training-late">旷训</strong>{% endif %}</p>{% endif %}</div>{% if ended and training.status == 'open' %}<form class="training-attendance" method="post" action="{{ url_for('training_attendance_record',session_id=training.id,user_id=member.id) }}"><input type="hidden" name="csrf" value="{{ csrf_token }}"><label><span class="sr-only">{{ member.name }}出勤情况</span><select name="attendance"><option value="clear" {% if not member.attendance %}selected{% endif %}>未确认</option><option value="attended" {% if member.attendance == 'attended' %}selected{% endif %}>已出勤</option><option value="absent" {% if member.attendance == 'absent' %}selected{% endif %}>未出勤</option></select></label><button class="smallbtn">保存</button></form>{% endif %}</article>{% endfor %}</section>{% endif %}</div>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}{{ training.title }} · LINGNAN UNITED{% endblock %}
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static',filename='training-leave.css') }}">
+{% endblock %}
+{% block content %}
+<div class="training-page">
+    <a class="back" href="{{ url_for('training_sessions') }}">集体训练</a>
+    <section class="training-hero">
+      <div class="training-card-top">
+        <h1>{{ training.title }}</h1>
+        {% if training.status == 'cancelled' %}<span class="training-tag">已取消</span>{% endif %}
+      </div>
+      <p>
+        {{ training.starts_at[:16]|replace('T',' ') }} 至 {{ training.ends_at[:16]|replace('T',' ') }}{% if training.location %} · {{ training.location }}{% endif %}
+      </p>
+      <p>请假截止：{{ deadline.strftime('%Y-%m-%d %H:%M') }}</p>
+      <div class="training-stats"><span><b>{{ expected }}</b> 预计到场</span><span><b>{{ leave_count }}</b> 人请假</span></div>
+      <small>预计到场按所有活跃账号中未请假人数估算，实际出勤由队长确认。</small>
+    </section>
+    {% if can_manage and training.status == 'open' %}
+      <div class="training-actions">
+        {% if not started %}<a class="outline" href="{{ url_for('training_session_edit',session_id=training.id) }}">编辑训练</a>{% endif %}
+        <form method="post" action="{{ url_for('training_session_cancel',session_id=training.id) }}">
+          {{ csrf_field() }}<button class="outline" data-confirm="确定取消本场训练？">取消训练</button>
+        </form>
+      </div>
+    {% endif %}
+    <section class="card training-section">
+      <h2>请假</h2>
+      {% if own and own.status == 'active' %}
+        <p><span class="{{ 'training-ok' if own.timely else 'training-late' }}">{{ '按时请假' if own.timely else '逾期请假' }}</span>：{{ own.reason }}</p>
+        <a class="outline" href="{{ url_for('leave',_anchor='training-%d'%training.id) }}">修改请假原因</a>
+      {% else %}
+        <p>需要请假请尽早提交，原因只有本人、队长和管理员能看到。</p>
+        <a class="outline" href="{{ url_for('leave',_anchor='training-%d'%training.id) }}">去请假</a>
+      {% endif %}
+    </section>
+    {% if can_manage %}
+      <section class="card training-section">
+        <h2>队员与出勤</h2>
+        <p class="hint">{{ '请在训练结束后确认实际出勤。' if not ended else '仅确认实际情况；逾期请假且缺席计为旷训。' }}</p>
+        {% for member in roster %}
+          <article class="training-member">
+            <div>
+              <strong>{{ member.real_name or member.name }}</strong>{% if member.real_name %} <small>（{{ member.name }}）</small>{% endif %}
+              <p>
+                {% if member.leave_status == 'active' %}<span class="{{ 'training-ok' if member.timely else 'training-late' }}">{{ '按时请假' if member.timely else '逾期请假' }}</span> · {{ member.reason }}{% else %}<span class="hint">未请假</span>{% endif %}
+              </p>
+              {% if member.attendance %}
+                <p>
+                  出勤：{% if member.attendance == 'attended' %}已出勤{% elif member.leave_status == 'active' and member.timely %}请假缺席{% else %}<strong class="training-late">旷训</strong>{% endif %}
+                </p>
+              {% endif %}
+            </div>
+            {% if ended and training.status == 'open' %}
+              <form class="training-attendance" method="post" action="{{ url_for('training_attendance_record',session_id=training.id,user_id=member.id) }}">
+                {{ csrf_field() }}
+                <label>
+                  <span class="sr-only">{{ member.name }}出勤情况</span><select name="attendance"><option value="clear" {% if not member.attendance %}selected{% endif %}>未确认</option><option value="attended" {% if member.attendance == 'attended' %}selected{% endif %}>已出勤</option><option value="absent" {% if member.attendance == 'absent' %}selected{% endif %}>未出勤</option></select>
+                </label>
+                <button class="smallbtn">保存</button>
+              </form>
+            {% endif %}
+          </article>
+        {% endfor %}
+      </section>
+    {% endif %}
+  </div>
+{% endblock %}

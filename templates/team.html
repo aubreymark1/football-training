@@ -1,5 +1,36 @@
-{% extends 'base.html' %}{% block content %}<link rel="stylesheet" href="{{ url_for('static',filename='avatar.css') }}"><h1>球队</h1><p class="page-lede">累计训练积分排名，兑换礼品不影响排名</p>
-{% if plans_enabled %}<a class="secondary-link" href="{{ url_for('team_plans_list') }}"><span>球队训练计划<small>查看集合安排、训练步骤和战术板</small></span></a>{% endif %}
-<a class="secondary-link" href="{{ url_for('training_sessions') }}"><span>集体训练<small>查看训练时间和出勤</small></span></a>
-<div class="card">{% for row in rows %}<div class="listrow rank-row{% if row.bottom %} bottom-row{% endif %}{% if row.id==me.id %} is-me{% endif %}"><div><span class="rank">{{ row.rank }}</span><a href="{{ url_for('avatar_image',uid=row.id) }}" data-zoom aria-label="查看{{ row.name }}的头像" style="display:block;flex:none"><img class="team-avatar" src="{{ url_for('avatar_image',uid=row.id) }}" alt="" width="36" height="36" loading="lazy"></a><div><strong><span class="nametip"{% if row.real_name %} tabindex="0"{% endif %}>{{ row.name }}{% if row.real_name %}<span class="nametip-bubble">{{ row.real_name }}</span>{% endif %}</span>{% if row.real_name %}<span class="realname">{{ row.real_name }}</span>{% endif %}{% if row.id==me.id %}<span class="me-tag">我</span>{% endif %}{% if row.bottom %}<span class="badge-warn">后 20%</span>{% endif %}</strong><p>本周必做 {{ row.required_met }}/{{ required_total }}{% if row.bottom %}，附加训练 {{ row.bonus }} 项{% endif %}</p></div></div><div class="score-inline"><span class="green">{{ row.points }} 分</span>{% if row.bottom %}<small class="{{ 'ok' if row.extra_done else 'warn' }}">{{ '已加练' if row.extra_done else '需加练' }}</small>{% endif %}</div></div>{% else %}<p class="muted">暂无队员</p>{% endfor %}</div>
-<details class="fold rules"><summary>积分与加练规则</summary><div class="fold-body"><p>必做任务未完成且未免除，该周扣 10 分；每周最多扣一次，周结束后结算。</p><p>累计训练积分排名后 20%（当前 {{ bottom_count }} 人；所有人积分和完成数相同时暂不标注）当周需额外完成 1 项附加训练，未完成的标为“需加练”。训练积分并列时先比本周完成数，再按昵称排序。</p></div></details>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}球队 · LINGNAN UNITED{% endblock %}
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static',filename='avatar.css') }}">
+{% endblock %}
+{% block content %}
+<h1>球队</h1>
+  <p class="page-lede">累计训练积分排名，兑换礼品不影响排名</p>
+  {% if plans_enabled %}<a class="secondary-link" href="{{ url_for('team_plans_list') }}"><span>球队训练计划<small>查看集合安排、训练步骤和战术板</small></span></a>{% endif %}
+  <a class="secondary-link" href="{{ url_for('training_sessions') }}"><span>集体训练<small>查看训练时间和出勤</small></span></a>
+  <div class="card">
+    {% for row in rows %}
+      <div class="listrow rank-row{% if row.bottom %} bottom-row{% endif %}{% if row.id==me.id %} is-me{% endif %}">
+        <div>
+          <span class="rank">{{ row.rank }}</span><a class="avatar-link" href="{{ url_for('avatar_image',uid=row.id) }}" data-zoom aria-label="查看{{ row.name }}的头像"><img class="team-avatar" src="{{ url_for('avatar_image',uid=row.id) }}" alt="" width="36" height="36" loading="lazy"></a>
+          <div>
+            <strong><span class="nametip"{% if row.real_name %} tabindex="0"{% endif %}>{{ row.name }}{% if row.real_name %}<span class="nametip-bubble">{{ row.real_name }}</span>{% endif %}</span>{% if row.real_name %}<span class="realname">{{ row.real_name }}</span>{% endif %}{% if row.id==me.id %}<span class="me-tag">我</span>{% endif %}{% if row.bottom %}<span class="badge-warn">后 20%</span>{% endif %}</strong>
+            <p>本周必做 {{ row.required_met }}/{{ required_total }}{% if row.bottom %}，附加训练 {{ row.bonus }} 项{% endif %}</p>
+          </div>
+        </div>
+        <div class="score-inline">
+          <span class="green">{{ row.points }} 分</span>{% if row.bottom %}<small class="{{ 'ok' if row.extra_done else 'warn' }}">{{ '已加练' if row.extra_done else '需加练' }}</small>{% endif %}
+        </div>
+      </div>
+    {% else %}
+      <p class="muted">暂无队员</p>
+    {% endfor %}
+  </div>
+  <details class="fold rules">
+    <summary>积分与加练规则</summary>
+    <div class="fold-body">
+      <p>必做任务未完成且未免除，该周扣 10 分；每周最多扣一次，周结束后结算。</p>
+      <p>累计训练积分排名后 20%（当前 {{ bottom_count }} 人；所有人积分和完成数相同时暂不标注）当周需额外完成 1 项附加训练，未完成的标为“需加练”。训练积分并列时先比本周完成数，再按昵称排序。</p>
+    </div>
+  </details>
+{% endblock %}

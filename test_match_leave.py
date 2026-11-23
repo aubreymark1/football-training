@@ -39,8 +39,11 @@ class MatchLeaveTests(unittest.TestCase):
         with m.db() as c:
             import match_leave
             state=match_leave.account_data(c,self.member,m.now());self.assertEqual((state['training_count'],state['match_count']),(1,1))
-        self.assertIn('训练原因',self.u.get('/account').get_data(as_text=True))
-        self.assertNotIn('训练原因',self.v.get('/account').get_data(as_text=True))
+        # 请假表单搬到独立的 /leave，账号页只保留一个入口卡片。
+        self.assertIn('href="/leave"',self.u.get('/account').get_data(as_text=True))
+        leave=self.u.get('/leave').get_data(as_text=True)
+        self.assertIn('训练原因',leave);self.assertIn('比赛原因',leave)
+        self.assertNotIn('训练原因',self.v.get('/leave').get_data(as_text=True))
         self.assertNotIn('比赛原因',self.v.get(f'/matches/{self.game}').get_data(as_text=True))
         self.assertEqual(self.post(self.u,f'/account/match-leave/{self.game}/cancel').status_code,302)
         with m.db() as c:
@@ -88,13 +91,13 @@ class MatchLeaveTests(unittest.TestCase):
         with m.db() as c:
             c.execute("UPDATE app_settings SET value=? WHERE key='match_leave_enabled_at'",((past-datetime.timedelta(days=1)).isoformat(),))
             c.execute("UPDATE matches SET date=?,time=?,status='finished',home_score=0,away_score=0 WHERE id=?",(past.date().isoformat(),past.strftime('%H:%M'),self.game))
-        account=self.u.get('/account').get_data(as_text=True)
+        account=self.u.get('/leave').get_data(as_text=True)
         self.assertIn('比赛原因',account)
         self.assertNotIn(f'/account/match-leave/{self.game}/cancel',account)
         self.assertEqual(self.post(self.cap,f'/matches/{self.game}/attendance/{self.member}',attendance='absent').status_code,302)
-        self.assertIn('旷赛',self.u.get('/account').get_data(as_text=True))
+        self.assertIn('旷赛',self.u.get('/leave').get_data(as_text=True))
         self.assertEqual(self.post(self.cap,f'/matches/{self.game}/attendance/{self.member}',attendance='attended').status_code,302)
-        self.assertIn('已出勤',self.u.get('/account').get_data(as_text=True))
+        self.assertIn('已出勤',self.u.get('/leave').get_data(as_text=True))
 
 
 if __name__=='__main__':unittest.main()

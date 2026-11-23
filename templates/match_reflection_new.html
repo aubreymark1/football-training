@@ -1,3 +1,18 @@
-{% extends 'base.html' %}{% block title %}发布赛后反思 · LINGNAN UNITED{% endblock %}{% block content %}
-<link rel="stylesheet" href="{{ url_for('static',filename='matches.css') }}"><div class="match-page match-compose-page"><a class="match-back" href="{{ url_for('matches_detail',match_id=game.id,_anchor='reflections') }}">← 返回比赛</a><h1>发布赛后反思</h1><p class="match-compose-context">{{ game.home }} {{ game.home_score }} : {{ game.away_score }} {{ game.away }}</p>
-<form class="match-panel match-form" method="post" enctype="multipart/form-data" action="{{ url_for('matches_reflect',match_id=game.id) }}" data-lock="发布中"><input type="hidden" name="csrf" value="{{ csrf_token }}"><label>反思<textarea name="content" required maxlength="3000" rows="6" placeholder="写下这场比赛的感受"></textarea></label><label>添加图片（选填，最多 7 MB）<input type="file" name="image" accept="image/jpeg,image/png,image/webp,image/gif"></label><button class="match-button">发布</button></form></div>{% endblock %}
+{% extends 'base.html' %}
+{% block title %}发布赛后反思 · LINGNAN UNITED{% endblock %}
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static',filename='matches.css') }}">
+{% endblock %}
+{% block content %}
+<div class="match-page match-compose-page">
+    <a class="back" href="{{ url_for('matches_detail',match_id=game.id,_anchor='reflections') }}">比赛详情</a>
+    <h1>发布赛后反思</h1>
+    <p class="match-compose-context">{{ game.home }} {{ game.home_score }} : {{ game.away_score }} {{ game.away }}</p>
+    <form class="card stack" method="post" enctype="multipart/form-data" action="{{ url_for('matches_reflect',match_id=game.id) }}" data-lock="发布中">
+      {{ csrf_field() }}
+      <label>反思<textarea name="content" required maxlength="3000" rows="6" placeholder="写下这场比赛的感受"></textarea></label>
+      <label>添加图片（选填，最多 7 MB）<input type="file" name="image" accept="image/jpeg,image/png,image/webp,image/gif"></label>
+      <button class="smallbtn">发布</button>
+    </form>
+  </div>
+{% endblock %}

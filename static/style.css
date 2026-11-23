@@ -1,6 +1,6 @@
 /* 岭足体能训练 — 样式表
    目录：1 变量  2 基础  3 页面骨架  4 通用组件  5 首页  6 提交表单
-        7 球队 / 积分 / 我的训练  8 管理  9 弹层与引导  10 助手页  11 动效  12 宽屏 */
+        7 球队 / 积分 / 我的训练  8 管理  9 弹层与引导  10 动效  11 宽屏 */
 
 /* ---------- 1 变量 ---------- */
 :root{
@@ -22,6 +22,17 @@
   --surface:#fff;
   --line:#dde3dc;
   --line-strong:#c3ccc3;
+  /* 深色区块（记分牌、训练详情头图）共用，别再各写一个十六进制值 */
+  --dark:#17392b;
+  --dark-soft:#d4e3d9;
+  --pitch-mid:#264f3d;
+  /* 赛程相关的暖色，取自队徽的褐与红 */
+  --warm-ink:#8e3731;
+  --warm-muted:#7a6b62;
+  --warm-line:#e5ddd5;
+  --warm-line-soft:#efe7e1;
+  --warm-wash:#f8efea;
+  --warm-shadow:#3f201408;
   --radius:12px;
   --radius-s:8px;
   --font:-apple-system,BlinkMacSystemFont,"PingFang SC","HarmonyOS Sans SC","MiSans","Microsoft YaHei UI","Microsoft YaHei","Segoe UI",sans-serif;
@@ -58,7 +69,7 @@ small{font-size:12px}
 
 /* ---------- 3 页面骨架 ---------- */
 .top{display:flex;align-items:center;justify-content:space-between;gap:16px;height:56px;padding:0 max(20px,calc((100vw - 1120px)/2))}
-.brand{display:flex;align-items:center;gap:10px;color:var(--ink);font-weight:650;line-height:1.15}
+.brand{display:flex;align-items:center;min-height:36px;gap:10px;color:var(--ink);font-weight:650;line-height:1.15}
 .brand small{display:block;font-weight:400;font-size:11px;color:var(--muted);margin-top:2px}
 .brandmark{width:34px;height:34px;border-radius:50%;overflow:hidden;flex:none;background:var(--surface)}
 .brandlogo{display:block;width:100%;height:100%;object-fit:cover}
@@ -83,9 +94,19 @@ main.wide{max-width:1120px}
 .score strong{font:600 34px/1 var(--num)}
 .score span{font-size:12px;color:var(--muted);margin-top:4px}
 .section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:32px 0 12px}
-.section-head a{font-size:13px}
+.section-head a{display:inline-flex;align-items:center;min-height:36px;font-size:13px}
 
 /* ---------- 4 通用组件 ---------- */
+/* 模板里零散的间距改用工具类，不再写 style="margin-top:12px" */
+.mt-6{margin-top:6px}
+.mt-12{margin-top:12px}
+.mt-16{margin-top:16px}
+.form-flat{margin:0}
+/* 行内小链接也要能点准：撑到 36px 可点高度 */
+.tap{display:inline-flex;align-items:center;min-height:36px}
+.notice.mt-12{margin:12px 0 0}
+.notice.mt-16{margin:16px 0 0}
+.avatar-link{display:block;flex:none}
 .stack{display:grid;gap:12px}
 .card,.empty{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
 .card + .card{margin-top:12px}
@@ -146,6 +167,8 @@ input:focus,textarea:focus,select:focus{outline:2px solid var(--pitch);outline-o
 
 .secondary-link{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;padding:8px 16px;margin-top:12px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);color:var(--ink);font-weight:500}
 .secondary-link small{display:block;color:var(--muted);font-weight:400}
+.leave-card{margin-top:16px;background:var(--pitch-wash);border-color:var(--line-strong)}
+.leave-card>span{font-weight:650;color:var(--pitch-deep)}
 .secondary-link::after,.manage-card::after{content:"";flex:none;width:7px;height:7px;border-top:1.6px solid var(--muted);border-right:1.6px solid var(--muted);transform:rotate(45deg)}
 
 .fold{margin-top:12px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface)}
@@ -211,7 +234,7 @@ input:focus,textarea:focus,select:focus{outline:2px solid var(--pitch);outline-o
 /* ---------- 6 提交表单 ---------- */
 .field-title{font-size:13px;font-weight:600;color:var(--ink-2)}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-.chip{min-height:34px;padding:0 12px;border:1px solid var(--line-strong);border-radius:17px;background:var(--surface);font-size:13px;color:var(--ink-2)}
+.chip{min-height:36px;padding:0 12px;border:1px solid var(--line-strong);border-radius:17px;background:var(--surface);font-size:13px;color:var(--ink-2)}
 .chip.is-on{border-color:var(--pitch);background:var(--pitch-wash);color:var(--pitch-deep);font-weight:600}
 .effort{border:0;margin:0;padding:0;min-width:0}
 .effort legend{padding:0;margin-bottom:6px}
@@ -348,16 +371,7 @@ dialog::backdrop{background:rgba(20,12,11,.6)}
 .tour-actions button{min-height:40px;font-size:14px;padding:0 16px}
 body.tour-open{overflow:hidden}
 
-/* ---------- 10 助手页（聊天组件自带样式，这里只对齐颜色） ---------- */
-#assistant-root .chat-send,#assistant-root .chat-start button,#assistant-root .action-card button:first-child{background:var(--pitch)}
-#assistant-root .chat-actions a,#assistant-root .action-status,#assistant-root .conversation-heading button,#assistant-root .chat-markdown blockquote a{color:var(--pitch-deep)}
-#assistant-root .conversation-row.active,#assistant-root .search-toggle.selected{background:var(--pitch-wash)}
-#assistant-root .search-toggle.selected{color:var(--pitch-deep);border-color:var(--pitch)}
-#assistant-root .chat-avatar{background:var(--pitch-wash);color:var(--pitch-deep)}
-#assistant-root .chat-input{border:0}
-#assistant-root .chat-input:focus{outline:none}
-
-/* ---------- 11 动效：只动 transform / opacity，只回应操作 ---------- */
+/* ---------- 10 动效：只动 transform / opacity，只回应操作 ---------- */
 @media (hover:hover){
   .primary:hover,.smallbtn:hover{background:var(--pitch-deep)}
   .outline:hover,.chip:hover{border-color:var(--ink-2)}
@@ -414,7 +428,7 @@ body.tour-open{overflow:hidden}
   }
 }
 
-/* ---------- 12 宽屏 ---------- */
+/* ---------- 11 宽屏 ---------- */
 @media (min-width:560px){
   h1{font-size:32px}
   .management-grid{grid-template-columns:1fr 1fr}

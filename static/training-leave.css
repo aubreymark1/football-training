@@ -1,4 +1,57 @@
-.training-page{max-width:760px;margin:0 auto}.training-heading,.training-card-top{display:flex;align-items:center;justify-content:space-between;gap:12px}.training-heading{margin:12px 0}.training-heading h1,.training-hero h1{margin:0}.training-note{color:var(--ink-2);line-height:1.6}.training-list{display:grid;gap:10px}.training-card{display:block;padding:18px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink)}.training-card p{margin:8px 0;color:var(--ink-2)}.training-card-meta{display:flex;justify-content:space-between;gap:10px;color:var(--muted);font-size:13px}.training-tag{font-size:12px;color:var(--pitch-deep);background:var(--pitch-wash);padding:4px 8px;border-radius:999px;white-space:nowrap}.training-hero{background:#17392b;color:white;border-radius:14px;padding:22px;margin:14px 0}.training-hero h1{font-size:24px}.training-hero p{margin:8px 0;color:#d4e3d9}.training-hero small{color:#d4e3d9}.training-stats{display:flex;gap:28px;margin:18px 0 8px}.training-stats b{font-size:24px}.training-section{margin:14px 0}.training-section h2{margin-top:0}.training-form{display:grid;gap:10px}.training-form label{display:grid;gap:6px}.training-form input,.training-form textarea,.training-attendance select{width:100%;padding:10px;border:1px solid var(--line-strong);border-radius:8px;background:#fff;font:inherit}.training-form textarea{resize:vertical}.training-form .smallbtn{justify-self:start}.training-form .hint{margin:0}.training-actions{display:flex;gap:8px}.training-actions form{margin:0}.training-member{padding:14px 0;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px}.training-member p{margin:5px 0;overflow-wrap:anywhere}.training-member small{color:var(--muted)}.training-attendance{display:flex;gap:6px;align-items:center}.training-attendance select{min-width:100px}.training-ok{color:var(--pitch-deep)}.training-late{color:var(--crimson)}.training-reason{white-space:pre-wrap;overflow-wrap:anywhere}@media(max-width:520px){.training-member{align-items:flex-start;flex-direction:column}.training-hero{padding:18px}.training-card-meta{flex-wrap:wrap}}
-.account-leave-counts{display:flex;flex-wrap:wrap;gap:12px 24px;margin:0}.account-leave-counts strong{font-size:22px;color:var(--pitch-deep)}.account-leave-group{border-top:1px solid var(--line);padding:14px 0}.account-leave-group>summary,.account-leave-event>summary{cursor:pointer;display:flex;justify-content:space-between;gap:12px;font-weight:650;color:var(--pitch-deep)}.account-leave-group>summary span,.account-leave-event>summary span{font-weight:400;color:var(--muted);font-size:13px;text-align:right}.account-leave-event{padding:12px 0;border-bottom:1px solid var(--line)}.account-leave-event form{margin:12px 0 0}.account-leave-history{border-top:1px solid var(--line);padding:9px 0;margin:0;line-height:1.6}.account-leave-history span{color:var(--muted);font-size:13px}@media(max-width:480px){.account-leave-event>summary{flex-direction:column;gap:3px}.account-leave-event>summary span{text-align:left}}
-.account-leave-group>summary::after,.account-leave-event>summary::after{content:'+';font-size:18px;line-height:1;color:var(--pitch-deep)}.account-leave-group[open]>summary::after,.account-leave-event[open]>summary::after{content:'−'}.account-leave-group>summary::-webkit-details-marker,.account-leave-event>summary::-webkit-details-marker{display:none}@media(max-width:480px){.account-leave-event>summary{position:relative;padding-right:24px}.account-leave-event>summary::after{position:absolute;right:0;top:0}}
-.card details.account-leave-group>summary,.card details.account-leave-event>summary{display:flex;width:100%;padding:0;font-size:14px}
+.training-page{max-width:760px;margin:0 auto}
+.training-heading,.training-card-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.training-heading{margin:12px 0}
+.training-heading h1,.training-hero h1{margin:0}
+.training-note{color:var(--ink-2);line-height:1.6}
+.training-list{display:grid;gap:10px}
+.training-card{display:block;padding:18px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink)}
+.training-card p{margin:8px 0;color:var(--ink-2)}
+.training-card-meta{display:flex;justify-content:space-between;gap:10px;color:var(--muted);font-size:13px}
+.training-tag{font-size:12px;color:var(--pitch-deep);background:var(--pitch-wash);padding:4px 8px;border-radius:999px;white-space:nowrap}
+.training-hero{background:var(--dark);color:white;border-radius:14px;padding:22px;margin:14px 0}
+.training-hero h1{font-size:24px}
+.training-hero p{margin:8px 0;color:var(--dark-soft)}
+.training-hero small{color:var(--dark-soft)}
+.training-stats{display:flex;gap:28px;margin:18px 0 8px}
+.training-stats b{font-size:24px}
+.training-section{margin:14px 0}
+.training-section h2{margin-top:0}
+.training-form{display:grid;gap:10px}
+.training-form label{display:grid;gap:6px}
+.training-form input,.training-form textarea,.training-attendance select{width:100%;padding:10px;border:1px solid var(--line-strong);border-radius:8px;background:#fff;font:inherit}
+.training-form textarea{resize:vertical}
+.training-form .smallbtn{justify-self:start}
+.training-form .hint{margin:0}
+.training-actions{display:flex;gap:8px}
+.training-actions form{margin:0}
+.training-member{padding:14px 0;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px}
+.training-member p{margin:5px 0;overflow-wrap:anywhere}
+.training-member small{color:var(--muted)}
+.training-attendance{display:flex;gap:6px;align-items:center}
+.training-attendance select{min-width:100px}
+.training-ok{color:var(--pitch-deep)}
+.training-late{color:var(--crimson)}
+@media(max-width:520px){
+  .training-member{align-items:flex-start;flex-direction:column}
+  .training-hero{padding:18px}
+  .training-card-meta{flex-wrap:wrap}
+}
+/* 我的请假页：训练、比赛两组折叠，条目和记录共用一套样式 */
+.leave-counts{display:flex;flex-wrap:wrap;gap:6px 24px;margin:14px 0 4px;font-size:14px}
+.leave-counts strong{font-size:22px;color:var(--pitch-deep)}
+.leave-group{border-top:1px solid var(--line);padding:14px 0}
+.leave-group>summary,.leave-event>summary{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:44px;padding:6px 0;cursor:pointer;list-style:none;font-weight:650;color:var(--pitch-deep)}
+.leave-group>summary span,.leave-event>summary span{font-weight:400;color:var(--muted);font-size:13px;text-align:right}
+.leave-group>summary::-webkit-details-marker,.leave-event>summary::-webkit-details-marker{display:none}
+.leave-group>summary::after,.leave-event>summary::after{content:'+';flex:none;width:24px;text-align:center;font-size:18px;line-height:1;color:var(--pitch-deep)}
+.leave-group[open]>summary::after,.leave-event[open]>summary::after{content:'−'}
+.leave-event{padding:4px 0 10px;border-bottom:1px solid var(--line)}
+.leave-event:last-of-type{border-bottom:0}
+.leave-event form{margin:10px 0 0}
+.leave-history{border-top:1px solid var(--line);padding:9px 0;margin:0;line-height:1.6}
+.leave-history span{color:var(--muted);font-size:13px}
+.leave-foot{margin-top:20px}
+@media(max-width:480px){
+  .leave-event>summary{flex-direction:column;align-items:flex-start;gap:3px}
+  .leave-event>summary span{text-align:left}
+}

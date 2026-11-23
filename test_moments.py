@@ -44,6 +44,22 @@ class MomentsTests(unittest.TestCase):
     def latest(self):
         with m.db() as c:return c.execute('SELECT max(id) FROM records').fetchone()[0]
 
+    def test_like_and_comment_reply_with_json_for_async_forms(self):
+        self.assertEqual(self.submit(self.alice).status_code,302)
+        rid=self.latest();url='/moments/%s/like'%rid
+        response=self.bob.post(url,data={'csrf':'token'},headers={'X-Requested-With':'fetch'})
+        self.assertEqual(response.status_code,200)
+        payload=response.get_json();self.assertTrue(payload['liked']);self.assertEqual(payload['label'],'♥ 取消')
+        self.assertIn('bob',payload['html']);self.assertIn('moment-interactions',payload['html'])
+        response=self.bob.post('/moments/%s/comment'%rid,data={'csrf':'token','content':'异步评论'},headers={'X-Requested-With':'fetch'})
+        payload=response.get_json();self.assertEqual(response.status_code,200)
+        self.assertIn('异步评论',payload['html'])
+        self.assertIn('/moments/%s/comment/'%rid,payload['html'])
+        response=self.bob.post(url,data={'csrf':'token'},headers={'X-Requested-With':'fetch'})
+        self.assertFalse(response.get_json()['liked']);self.assertEqual(response.get_json()['label'],'♡ 赞')
+        page=self.bob.get('/moments').get_data(as_text=True)
+        self.assertIn('data-remote="comment"',page);self.assertIn('异步评论',page)
+
     def test_new_submissions_shared_old_records_private_and_image_rules(self):
         self.assertEqual(m.app.test_client().get('/moments').status_code,302)
         self.assertEqual(self.bob.get('/moments/%s/image'%self.old_id).status_code,404)

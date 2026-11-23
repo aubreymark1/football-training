@@ -1,0 +1,8 @@
+<div class="match-comment">
+  <b>{{ comment.author }}</b>：{{ comment.content }}
+  {% if comment.user_id == me.id or can_manage %}
+    <form method="post" action="{{ url_for('matches_comment_delete',match_id=game.id,comment_id=comment.id) }}">
+      {{ csrf_field() }}<button class="textbtn">删除</button>
+    </form>
+  {% endif %}
+</div>

@@ -1,1 +1,13 @@
-{% extends 'base.html' %}{% block content %}<a class="back" href="{{ url_for('admin',section='members') }}">成员与邀请</a><h1>{{ user.name }} 的周分析</h1>{% for r in reports %}<div class="section-head"><h2>{{ r.week }} 这周</h2></div><div class="card prose">{{ r.content }}</div>{% else %}<div class="empty" style="margin-top:16px">还没有生成分析。可以在「成员与邀请」里为这位队员生成。</div>{% endfor %}{% endblock %}
+{% extends 'base.html' %}
+{% block title %}周分析 · LINGNAN UNITED{% endblock %}
+{% block content %}
+<a class="back" href="{{ url_for('admin',section='members') }}">成员与邀请</a>
+  <h1>{{ user.name }} 的周分析</h1>
+  {% for r in reports %}
+    <div class="section-head">
+      <h2>{{ r.week }} 这周</h2>
+    </div>
+    <div class="card prose">{{ r.content }}</div>
+  {% else %}
+    <div class="empty mt-16">还没有生成分析。可以在「成员与邀请」里为这位队员生成。</div>
+  {% endfor %}{% endblock %}

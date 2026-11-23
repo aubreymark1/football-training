@@ -1,0 +1,8 @@
+<div class="moment-interactions">
+  {% if like_names %}
+    <p class="moment-likes"><span aria-hidden="true">♡</span> {{ like_names|join('，') }}</p>
+  {% endif %}
+  {% for comment in comments %}
+    {% include '_moment_comment.html' %}
+  {% endfor %}
+</div>

@@ -149,7 +149,7 @@ def register(app, *, db, current, login_required, now):
                     VALUES(?,?,?,?,?,?,'active') ON CONFLICT(session_id,user_id) DO UPDATE SET reason=excluded.reason,
                     submitted_at=excluded.submitted_at,deadline_at_submission=excluded.deadline_at_submission,timely=excluded.timely,status='active' ''',
                     (session_id,uid,reason,stamp.isoformat(timespec='seconds'),deadline.isoformat(timespec='seconds'),int(submitted_on_time(start,stamp))))
-        flash('训练请假已保存。');return redirect(url_for('account',_anchor='leave'))
+        flash('训练请假已保存。');return redirect(url_for('leave',_anchor='training-%d'%session_id))
 
     @app.post('/training-sessions/<int:session_id>/leave/cancel')
     @login_required
@@ -159,7 +159,7 @@ def register(app, *, db, current, login_required, now):
             session=get_session(c,session_id)
             if session['status']!='open' or datetime.datetime.fromisoformat(now())>=datetime.datetime.fromisoformat(session['starts_at']): abort(400)
             c.execute("UPDATE training_leave_requests SET status='cancelled' WHERE session_id=? AND user_id=? AND status='active'",(session_id,current()['id']))
-        flash('已取消训练请假。');return redirect(url_for('account',_anchor='leave'))
+        flash('已取消训练请假。');return redirect(url_for('leave',_anchor='training-%d'%session_id))
 
     @app.post('/training-sessions/<int:session_id>/attendance/<int:user_id>')
     @login_required

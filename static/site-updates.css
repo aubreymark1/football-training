@@ -1,1 +1,8 @@
-#site-update{width:min(420px,calc(100% - 36px));max-height:calc(100dvh - 40px);padding:0;border:0;border-radius:18px;background:#fff;color:#1c3025;box-shadow:0 18px 60px #11251c40}#site-update::backdrop{background:rgba(17,32,23,.65)}.update-card{padding:28px 25px 24px}.update-date{margin:0 0 8px;color:#47755c;font-size:13px;font-weight:700}.update-card h2{margin:0;font-size:24px}.update-card ul{margin:20px 0 24px;padding-left:20px}.update-card li{padding-left:3px;margin:10px 0;line-height:1.6}.update-card form button{width:100%;min-height:46px}
+#site-update{width:min(420px,calc(100% - 36px));max-height:calc(100dvh - 40px);padding:0;border:0;border-radius:18px;background:#fff;color:#1c3025;box-shadow:0 18px 60px #11251c40}
+#site-update::backdrop{background:rgba(17,32,23,.65)}
+.update-card{padding:28px 25px 24px}
+.update-date{margin:0 0 8px;color:#47755c;font-size:13px;font-weight:700}
+.update-card h2{margin:0;font-size:24px}
+.update-card ul{margin:20px 0 24px;padding-left:20px}
+.update-card li{padding-left:3px;margin:10px 0;line-height:1.6}
+.update-card form button{width:100%;min-height:46px}

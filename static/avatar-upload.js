@@ -4,8 +4,27 @@
   const input = form.elements.avatar;
   const button = form.querySelector('button[type=submit], button:not([type])');
   const status = document.querySelector('#avatar-status');
+  const box = form.querySelector('.upload');
+  const thumb = form.querySelector('.upload-thumb');
+  const name = form.querySelector('.upload-text strong');
+  const meta = form.querySelector('.upload-text small');
+  const idle = { name: name.textContent, meta: meta.textContent };
+  let preview = '';
   let version = 0;
   let processing = false;
+
+  const size = (bytes) => bytes < 1024 * 1024
+    ? Math.max(1, Math.round(bytes / 1024)) + ' KB'
+    : (bytes / 1024 / 1024).toFixed(1) + ' MB';
+
+  function show(file, note) {
+    if (preview) URL.revokeObjectURL(preview);
+    preview = file ? URL.createObjectURL(file) : '';
+    box.classList.toggle('has-file', Boolean(file));
+    thumb.style.backgroundImage = file ? 'url("' + preview + '")' : '';
+    name.textContent = file ? file.name : idle.name;
+    meta.textContent = file ? size(file.size) + (note || '') + '，点这里可以重新选' : idle.meta;
+  }
 
   function loadImage(file) {
     return new Promise((resolve, reject) => {
@@ -31,31 +50,34 @@
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
     if (!blob || blob.size > 7 * 1024 * 1024) throw new Error('compression failed');
-    return new File([blob], 'avatar.jpg', {type: 'image/jpeg'});
+    return new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
   }
+
   input.addEventListener('change', async () => {
     const current = ++version;
-    const file = input.files && input.files[0];
+    let file = input.files && input.files[0];
     status.textContent = '';
-    if (!file) { processing = false; button.disabled = false; return; }
+    if (!file) { processing = false; button.disabled = false; show(null); return; }
     processing = true; button.disabled = true;
-    status.textContent = ' 正在压缩图片…';
+    show(file, '，正在缩小');
     try {
       const compressed = await compress(file);
       if (current !== version) return;
       const transfer = new DataTransfer();
       transfer.items.add(compressed);
       input.files = transfer.files;
-      status.textContent = ' 图片已压缩，可以上传。';
+      show(compressed);
+      status.textContent = '图片已缩小，可以上传。';
     } catch (_) {
       if (current !== version) return;
       input.value = '';
-      status.textContent = ' 无法处理这张图片，请换一张 JPG、PNG 或截图后重试。';
+      show(null);
+      status.textContent = '无法处理这张图片，请换一张 JPG、PNG 或截图后重试。';
     } finally {
       if (current === version) { processing = false; button.disabled = false; }
     }
   });
   form.addEventListener('submit', event => {
-    if (processing) { event.preventDefault(); status.textContent = ' 图片正在压缩，请稍等。'; }
+    if (processing) { event.preventDefault(); status.textContent = '图片正在处理，请稍等。'; }
   });
 })();

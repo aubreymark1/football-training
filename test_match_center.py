@@ -87,6 +87,25 @@ class MatchCenterTest(unittest.TestCase):
         self.assertIn('src="/static/avatars/default-1.jpg?',page)
         self.assertEqual(self.u.get(f'/avatar/{self.member}').status_code,302)
 
+    def test_reflection_interactions_accept_async_json_and_image_size(self):
+        image=io.BytesIO(); Image.new('RGB',(40,30),'red').save(image,'PNG'); image.seek(0)
+        self.assertEqual(self.u.post(f'/matches/{self.game}/reflections',data={'csrf':'csrf','content':'异步反思','image':(image,'x.png')}).status_code,302)
+        with m.db() as c: row=c.execute('SELECT id,image_w,image_h FROM match_reflections').fetchone()
+        self.assertEqual((row['image_w'],row['image_h']),(40,30))
+        rid=row['id']
+        self.assertEqual(self.v.get(f'/matches/reflections/{rid}/image?thumb=1').status_code,200)
+        like=self.v.post(f'/matches/{self.game}/reflections/{rid}/like',data={'csrf':'csrf'},headers={'X-Requested-With':'fetch'})
+        self.assertEqual(like.status_code,200)
+        self.assertEqual((like.get_json()['liked'],like.get_json()['likes']),(True,1))
+        self.assertEqual(like.get_json()['label'],'取消赞 · 1')
+        comment=self.v.post(f'/matches/{self.game}/reflections/{rid}/comment',data={'csrf':'csrf','content':'异步评论'},headers={'X-Requested-With':'fetch'})
+        self.assertEqual(comment.status_code,200)
+        self.assertIn('异步评论',comment.get_json()['html'])
+        page=self.v.get(f'/matches/{self.game}').get_data(as_text=True)
+        self.assertIn('异步评论',page)
+        self.assertIn('data-remote="like"',page)
+        self.assertIn('width="40" height="30"',page)
+
     def test_reflection_image_like_comments_and_ownership(self):
         image=io.BytesIO(); Image.new('RGB',(5,5),'red').save(image,'PNG'); image.seek(0)
         response=self.u.post(f'/matches/{self.game}/reflections',data={'csrf':'csrf','content':'比赛反思','image':(image,'x.png')})
