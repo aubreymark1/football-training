@@ -15,7 +15,6 @@
         </span>
         <span class="next-match-teams">{{ game.home }} <i>vs</i> {{ game.away }}</span>
       </a>
-      {% if game.id in leave_ready %}<a class="next-match-leave" href="{{ url_for('leave', _anchor='match-%d' % game.id) }}">请假</a>{% endif %}
     {% else %}
       <p class="next-match-empty">近期没有比赛安排。</p>
     {% endif %}
@@ -44,7 +43,6 @@
     <div class="home-main">
   <div class="section-head" id="guide-tasks">
     <h2>本周任务</h2>
-    <a href="{{ url_for('leave') }}">我的请假</a>
   </div>
   {% macro state(t) %}{% if t.exempt %}<span class="state">已免除</span>{% elif t.done %}<span class="state state-done">已通过 {{ t.done }} 次</span>{% elif t.pending %}<span class="state state-wait">待审核 {{ t.pending }} 条</span>{% else %}<span class="state state-todo">待完成</span>{% endif %}{% endmacro %}
   {% macro go(t) %}<a class="task-go {{ 'outline' if t.done or t.pending or t.exempt else 'smallbtn' }}" aria-label="提交{{ t.title }}" href="{{ url_for('submit',tid=t.id) }}">{{ '再交一条' if t.done or t.pending or t.exempt else '去提交' }}</a>{% endmacro %}

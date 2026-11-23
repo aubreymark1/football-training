@@ -16,10 +16,9 @@
       <p>{{ game.venue or '地点待定' }} · {{ {'scheduled':'未开始','finished':'已结束','cancelled':'已取消'}[game.status] }}</p>
       {% if can_manage %}<a href="{{ url_for('matches_edit',match_id=game.id) }}">编辑比赛信息 →</a>{% endif %}
     </section>
-    {% if can_leave or can_manage %}
+    {% if can_manage or own_leave == 'active' %}
       <div class="match-actions-row">
-        {% if can_leave %}<a class="outline" href="{{ url_for('leave',_anchor='match-%d'%game.id) }}">{{ '修改比赛请假' if own_leave == 'active' else '请假' }}</a>{% endif %}
-        {% if own_leave == 'active' %}<span class="match-leave-state">已提交比赛请假</span>{% endif %}
+        {% if own_leave == 'active' %}<span class="match-leave-state">已提交比赛请假，可在<a href="{{ url_for('account') }}">账号设置</a>的“我的请假”修改</span>{% endif %}
         {% if me.role == 'admin' or me.is_captain %}<a class="outline" href="{{ url_for('match_attendance_view',match_id=game.id) }}">比赛请假与出勤</a>{% endif %}
       </div>
     {% endif %}

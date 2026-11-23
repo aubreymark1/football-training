@@ -54,6 +54,21 @@ class MatchLeaveTests(unittest.TestCase):
             c.execute("UPDATE training_sessions SET status='cancelled' WHERE id=?",(self.training,))
             state=match_leave.account_data(c,self.member,m.now());self.assertEqual((state['training_count'],state['match_count']),(0,0))
 
+    def test_leave_entry_lives_on_account_page_only(self):
+        self.assertEqual(self.post(self.u,f'/training-sessions/{self.training}/leave',reason='训练原因').status_code,302)
+        self.assertEqual(self.post(self.u,f'/account/match-leave/{self.game}',reason='比赛原因').status_code,302)
+        account=self.u.get('/account').get_data(as_text=True)
+        self.assertIn('href="/leave"',account)
+        home=self.u.get('/').get_data(as_text=True)
+        self.assertNotIn('href="/leave',home)
+        self.assertNotIn('next-match-leave',home)
+        match=self.u.get(f'/matches/{self.game}').get_data(as_text=True)
+        self.assertNotIn('href="/leave',match)
+        self.assertIn('已提交比赛请假',match)
+        training=self.u.get(f'/training-sessions/{self.training}').get_data(as_text=True)
+        self.assertNotIn('href="/leave',training)
+        self.assertIn('账号设置',training)
+
     def test_upgrade_preserves_existing_training_leave(self):
         self.assertEqual(self.post(self.u,f'/training-sessions/{self.training}/leave',reason='已有记录').status_code,302)
         with m.db() as c:

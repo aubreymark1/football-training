@@ -385,15 +385,13 @@ def home():
         records=c.execute("SELECT r.*,coalesce(l.amount,0) AS earned_points,(l.id IS NOT NULL) AS has_points_entry,coalesce(t.kind,'free') AS task_kind,coalesce(t.title,'自主训练') AS title FROM records r LEFT JOIN tasks t ON t.id=r.task_id LEFT JOIN ledger l ON l.record_id=r.id WHERE r.user_id=? ORDER BY r.id DESC LIMIT 5",(u['id'],)).fetchall()
         report=c.execute('SELECT * FROM reports WHERE user_id=? ORDER BY week DESC LIMIT 1',(u['id'],)).fetchone()
         strip=week_strip(c,u['id'])
-        leave_cutoff=match_leave.enabled_at(c)
     standings,_,_=team_standings()
     mine=next((row for row in standings if row['id']==u['id']),None)
     required=[t for t in tasks if t['kind']=='required']
     modules=[(code,label,[t for t in tasks if t['kind']=='bonus' and (t['module'] or 'fitness')==code]) for code,label in (('fitness','体能训练'),('strength','力量训练'),('ball','有球训练'))]
     exempt_all=bool(required) and all(t['exempt'] for t in required)
-    leave_ready={g['id'] for g in fixtures if match_leave.match_start(g)>=leave_cutoff}
     update_notice = site_updates.CURRENT if u['update_seen'] < site_updates.CURRENT['version'] else None
-    return render_template('home.html',tasks=tasks,required=required,modules=modules,has_bonus=any(items for _,_,items in modules),points=points,records=records,report=report,standing=mine,strip=strip,required_done=sum(1 for t in required if t['done'] or t['exempt']),exempt_all=exempt_all,fixtures=fixtures,leave_ready=leave_ready,update_notice=update_notice)
+    return render_template('home.html',tasks=tasks,required=required,modules=modules,has_bonus=any(items for _,_,items in modules),points=points,records=records,report=report,standing=mine,strip=strip,required_done=sum(1 for t in required if t['done'] or t['exempt']),exempt_all=exempt_all,fixtures=fixtures,update_notice=update_notice)
 @app.route('/submit/<int:tid>',methods=['GET','POST'])
 @login_required
 def submit(tid):

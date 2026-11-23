@@ -6,7 +6,6 @@ from flask import abort, flash, jsonify, redirect, render_template, request, sen
 from PIL import Image, UnidentifiedImageError
 
 from league_schedule import FIXTURES
-import match_leave
 
 
 def init_schema(c):
@@ -132,9 +131,8 @@ def register(app, *, db, current, login_required, now):
             users=c.execute('SELECT id,name,real_name FROM users WHERE active=1 AND deleted=0 ORDER BY name').fetchall() if can_manage else []
             managers=c.execute('SELECT user_id FROM match_managers').fetchall() if current()['role']=='admin' else []
             own_leave=c.execute("SELECT status FROM match_leave_requests WHERE match_id=? AND user_id=?",(match_id,uid)).fetchone()
-            can_leave=game['status']!='cancelled' and match_leave.match_start(game)>=match_leave.enabled_at(c)
         return render_template('matches_detail.html',game=game,players=players,reflections=reflections,comments=comments,
-                               can_manage=can_manage,users=users,managers=managers,can_leave=can_leave,
+                               can_manage=can_manage,users=users,managers=managers,
                                own_leave=own_leave['status'] if own_leave else None)
 
     @app.post('/matches/managers')
