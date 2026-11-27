@@ -385,8 +385,12 @@ class Flow(unittest.TestCase):
 
  def test_brand_and_onboarding_tour(self):
   member=m.app.test_client(); self.join_member(member)
-  login=member.get('/login').get_data(as_text=True)
-  self.assertIn('LINGNAN UNITED',login); self.assertIn('logo-512.png',login); self.assertIn('favicon-32.png',login)
+  login=m.app.test_client().get('/login').get_data(as_text=True)
+  self.assertIn('LINGNAN UNITED',login); self.assertIn('favicon-32.png',login)
+  self.assertIn('brand/logo-96.png',login)
+  self.assertEqual(login.count('class="brandlogo"'),1)
+  self.assertIn('id="slab-scene"',login); self.assertIn('auth-crest.js',login)
+  self.assertNotIn('id="btn-auto"',login); self.assertNotIn('control-dock',login)
   assistant=member.get('/assistant').get_data(as_text=True)
   self.assertNotIn('AI 和数据说明',assistant)
   self.assertEqual(member.get('/static/guide.js').status_code,200)
@@ -588,6 +592,28 @@ class Flow(unittest.TestCase):
   body=bulk.call_args.args[0][0][2]
   self.assertIn('https://lingnanunited.site/football/login',body)
   self.assertNotIn('localhost',body)
+ def test_password_login_requires_reauthentication_on_a_new_visit(self):
+  response=self.login('coach')
+  self.assertEqual(response.location,'/')
+  self.assertNotIn('Expires=',response.headers['Set-Cookie'])
+  self.assertNotIn('Max-Age=',response.headers['Set-Cookie'])
+  navigate={'Sec-Fetch-Mode':'navigate','Sec-Fetch-Dest':'document'}
+  in_site=self.client.get('/account',headers={**navigate,'Sec-Fetch-Site':'same-origin'})
+  self.assertEqual(in_site.status_code,200)
+  self.assertEqual(in_site.headers['Cache-Control'],'private, no-store')
+  external={**navigate,'Sec-Fetch-Site':'none'}
+  self.assertEqual(self.client.get('/',headers={**external,'Sec-Purpose':'prefetch'}).status_code,200)
+  self.assertEqual(self.client.get('/',headers=external).location,'/login')
+  self.assertEqual(self.client.get('/account').location,'/login')
+
+ def test_old_persistent_login_is_discarded(self):
+  self.login('coach')
+  with self.client.session_transaction() as state:
+   state.permanent=True
+  result=self.client.get('/')
+  self.assertEqual(result.location,'/login')
+  self.assertIn('Max-Age=0',result.headers['Set-Cookie'])
+
  def test_login_throttle(self):
   for _ in range(8):
    self.assertEqual(self.post('/login',{'name':'nobody','password':'wrong'}).status_code,302)
@@ -611,7 +637,8 @@ class Flow(unittest.TestCase):
  def test_week_strip_trend_and_review_thumbnails(self):
   member=m.app.test_client(); self.join_member(member)
   home=member.get('/').get_data(as_text=True)
-  self.assertIn('class="track"',home); self.assertIn('今天',home); self.assertNotIn('已训练',home)
+  self.assertIn('class="week-axis"',home); self.assertIn('aria-current="date"',home)
+  self.assertIn('已训练 <strong>0</strong>',home); self.assertNotIn('可用积分',home.split('</main>',1)[0])
   empty=member.get('/history').get_data(as_text=True)
   self.assertIn('连续打卡',empty); self.assertNotIn('class="trend"',empty)
   img=io.BytesIO(); Image.new('RGB',(900,1600),'white').save(img,'PNG'); img.seek(0)
@@ -622,7 +649,7 @@ class Flow(unittest.TestCase):
   self.assertEqual((trend['streak'],trend['week_minutes'],trend['week_sessions'],trend['total_sessions']),(1,45,1,1))
   self.assertEqual(len(trend['series']),8); self.assertTrue(trend['series'][-1]['current']); self.assertEqual(trend['series'][-1]['height'],100)
   self.assertEqual(strip['trained'],1); self.assertEqual(len(strip['days']),7)
-  self.assertIn('已训练',member.get('/').get_data(as_text=True))
+  self.assertIn('已训练 <strong>1</strong>',member.get('/').get_data(as_text=True))
   page=member.get('/history').get_data(as_text=True)
   self.assertIn('class="trend"',page); self.assertIn('45 分钟，1 次',page); self.assertIn('data-zoom',page)
   thumb=member.get('/image/%d?thumb=1'%rid)

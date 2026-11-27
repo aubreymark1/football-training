@@ -33,7 +33,10 @@
     try {
       const data = await send(form, event.submitter);
       if (data.label !== undefined && button) button.textContent = data.label;
-      if (data.liked !== undefined) form.dataset.liked = data.liked ? '1' : '0';
+      if (data.liked !== undefined) {
+        form.dataset.liked = data.liked ? '1' : '0';
+        if (button) button.classList.toggle('is-liked', Boolean(data.liked));
+      }
       const card = form.closest('[data-card]') || document;
       const slot = form.dataset.replace && card.querySelector(form.dataset.replace);
       if (form.dataset.replace && data.html !== undefined) {
@@ -50,7 +53,7 @@
       const input = form.querySelector('input[name=content]');
       if (input && form.dataset.remote === 'comment') {
         input.value = '';
-        input.focus();
+        if (window.matchMedia && window.matchMedia('(hover: hover)').matches) input.focus();
       }
     } catch (_) {
       fallback(form, button);

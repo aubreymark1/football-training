@@ -34,6 +34,17 @@ class PasskeyTests(unittest.TestCase):
   data={'credential':__import__('json').dumps({'id':self.credential_id,'type':'public-key'})}
   self.assertEqual(self.post('/passkey/login/finish',data).status_code,400)
   self.assertEqual(self.post('/passkey/login/finish',data).status_code,400)
+ def test_successful_passkey_login_uses_a_browser_session_cookie(self):
+  from types import SimpleNamespace
+  self.add_key()
+  self.assertEqual(self.post('/passkey/login/options').status_code,200)
+  data={'credential':__import__('json').dumps({'id':self.credential_id,'type':'public-key'})}
+  with patch('passkeys.verify_authentication_response',return_value=SimpleNamespace(new_sign_count=1)):
+   response=self.post('/passkey/login/finish',data)
+  self.assertEqual(response.status_code,200)
+  self.assertNotIn('Expires=',response.headers['Set-Cookie'])
+  self.assertEqual(response.headers['Cache-Control'],'private, no-store')
+  self.assertEqual(self.client.get('/account').status_code,200)
  def test_removal_is_limited_to_owner_and_requires_password(self):
   self.add_key();self.login()
   with m.db() as c:key=c.execute('SELECT id FROM passkeys WHERE user_id=?',(self.uid,)).fetchone()[0]

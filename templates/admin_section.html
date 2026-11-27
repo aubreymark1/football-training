@@ -1,7 +1,16 @@
 {% extends 'base.html' %}
 {% block title %}{{ title }} · LINGNAN UNITED{% endblock %}
+{% block main_class %}wide{% endblock %}
 {% block content %}
 <a class="back" href="{{ url_for('admin') }}">球队管理</a>
   <h1>{{ title }}</h1>
   <p class="page-lede">{{ description }}</p>
-  {% include 'admin_' ~ section ~ '_content.html' %}{% endblock %}
+  <nav class="subnav mt-16" aria-label="管理模块">
+    <a href="{{ url_for('admin',section='review') }}" {% if section=='review' %}aria-current="page"{% endif %}>记录审核</a>
+    <a href="{{ url_for('admin',section='overview') }}" {% if section=='overview' %}aria-current="page"{% endif %}>本周概览</a>
+    <a href="{{ url_for('admin',section='tasks') }}" {% if section=='tasks' %}aria-current="page"{% endif %}>训练任务</a>
+    <a href="{{ url_for('admin',section='shop') }}" {% if section=='shop' %}aria-current="page"{% endif %}>礼品兑换</a>
+    <a href="{{ url_for('admin',section='members') }}" {% if section=='members' %}aria-current="page"{% endif %}>成员邀请</a>
+  </nav>
+  {% include 'admin_' ~ section ~ '_content.html' %}
+{% endblock %}

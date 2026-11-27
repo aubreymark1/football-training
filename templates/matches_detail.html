@@ -35,7 +35,7 @@
       </section>
     {% endif %}
     {% if players or can_manage %}
-      <details class="match-panel match-roster">
+      <details class="match-panel match-roster" open>
         <summary>参赛名单{% if players %}（{{ players|length }}）{% endif %}</summary>
         {% for p in players %}
           <div class="match-roster-row">

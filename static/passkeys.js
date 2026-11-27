@@ -25,7 +25,8 @@
   const showError=(error,status)=>{status.textContent=error.name==='NotAllowedError'?'已取消操作或验证超时，请重试。':(error.message||'操作失败，请重试。')};
   if(login){
     const status=document.getElementById('passkey-login-status');
-    if(!support()){login.hidden=true;status.textContent='当前浏览器不支持通行密钥，可继续使用密码登录。'}
+    login.hidden=!support();
+    if(login.hidden)status.textContent='当前浏览器不支持通行密钥，可使用密码登录。';
     else login.addEventListener('click',async()=>{login.disabled=true;status.textContent='请在设备上完成身份验证。';try{
       const options=await post(login.dataset.options,{csrf:login.dataset.csrf});
       const cred=await navigator.credentials.get({publicKey:convert(options,false)});

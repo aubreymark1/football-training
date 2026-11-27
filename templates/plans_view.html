@@ -5,7 +5,7 @@
   <link rel="stylesheet" href="{{ url_for('static',filename='plans.css') }}">
 {% endblock %}
 {% block content %}
-<a class="back" href="{{ url_for('team_plans_list') }}">每周训练计划</a>
+<a class="back" href="{{ url_for('training_sessions', _anchor='weekly-plans') }}">每周训练计划</a>
   <header class="plan-detail-head">
     <div>
       <p class="plans-kicker">{{ plan.week }} 当周 · 球队训练</p>

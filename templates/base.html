@@ -1,11 +1,12 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#f2f4f1">
+    <meta name="theme-color" content="#141415" id="meta-theme-color">
     <meta name="apple-mobile-web-app-title" content="LINGNAN UNITED">
     <title>{% block title %}LINGNAN UNITED{% endblock %}</title>
+    <script>try{var t=localStorage.getItem('lu_theme')||'dark';document.documentElement.dataset.theme=t;if(t==='light')document.getElementById('meta-theme-color').content='#fafafa'}catch(e){}</script>
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static',filename='brand/favicon-32.png') }}">
     <link rel="icon" href="{{ url_for('static',filename='brand/favicon.ico') }}" sizes="any">
     <link rel="apple-touch-icon" href="{{ url_for('static',filename='brand/apple-touch-icon.png') }}">
@@ -14,35 +15,87 @@
     {% block head %}{% endblock %}
     <script src="{{ url_for('static',filename='site.js') }}" defer></script>
   </head>
-  <body>
-    <header class="top">
-      <a class="brand" href="{{ url_for('home') }}"><span class="brandmark" aria-hidden="true"><img class="brandlogo" src="{{ url_for('static',filename='brand/logo-96.png') }}" alt="" width="34" height="34"></span><span>LINGNAN UNITED</span></a>{% if me %}
-        <div class="topright">{% if me.role=='admin' %}<a class="topadmin" href="{{ url_for('admin') }}">管理</a>{% endif %}<a href="{{ url_for('account') }}" title="账号设置">{{ me.name }}</a>
-          <form method="post" action="{{ url_for('logout') }}">{{ csrf_field() }}<button class="textbtn">退出</button></form>
+  <body class="{{ 'has-shell' if me else 'is-guest' }} {% block body_class %}{% endblock %}">
+    {% block backdrop %}{% endblock %}
+    {% set here=request.endpoint %}
+    {% macro mark(on) %}{% if on %}aria-current="page"{% endif %}{% endmacro %}
+    <div class="app-rail">
+      <header class="top">
+        <a class="brand" href="{{ url_for('home') }}">
+          <span class="brandmark" aria-hidden="true"><img class="brandlogo" src="{{ url_for('static',filename='brand/logo-96.png') }}" alt="" width="28" height="28"></span>
+          <span class="brand-name">LINGNAN UNITED</span>
+        </a>
+        <div class="topright">
+          <button type="button" class="iconbtn theme-toggle" data-theme-toggle aria-label="切换深浅色" title="切换深浅色">
+            <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M3 12h2M19 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+            <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+          </button>
+          {% if me %}
+            {% if me.role=='admin' %}<a class="topadmin" href="{{ url_for('admin') }}" {{ mark(here in ('admin','reminders','view_report')) }}>管理</a>{% endif %}
+            <a class="topaccount" href="{{ url_for('account') }}" {{ mark(here in ('account','leave')) }} title="账号设置">{{ me.name }}</a>
+            <form method="post" action="{{ url_for('logout') }}" class="logout-form">{{ csrf_field() }}<button class="textbtn">退出</button></form>
+          {% endif %}
+        </div>
+      </header>
+      {% if me %}
+        <nav class="bottom" aria-label="主导航">
+          <a id="guide-nav-home" href="{{ url_for('home') }}" {{ mark(here in ('home','submit','history','free_training')) }}>
+            {% if here in ('home','submit','history','free_training') %}<i class="nav-mark"></i>{% endif %}
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4M16 2v4M3 10h18M8 14h4"/></svg>
+            <span>训练</span>
+          </a>
+          <a id="guide-nav-moments" href="{{ url_for('moments_feed') }}" {{ mark(here and here.startswith('moments_')) }}>
+            {% if here and here.startswith('moments_') %}<i class="nav-mark"></i>{% endif %}
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span>动态</span>
+          </a>
+          <a href="{{ url_for('matches_index') }}" {{ mark(here and (here.startswith('matches_') or here.startswith('match_'))) }}>
+            {% if here and (here.startswith('matches_') or here.startswith('match_')) %}<i class="nav-mark"></i>{% endif %}
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M12 5v14"/><circle cx="12" cy="12" r="3"/></svg>
+            <span>比赛</span>
+          </a>
+          <a id="guide-nav-team" href="{{ url_for('team') }}" {{ mark(here in ('team','team_plans_list','team_plans_view','team_plans_edit','training_sessions','training_session_detail','training_session_edit')) }}>
+            {% if here in ('team','team_plans_list','team_plans_view','team_plans_edit','training_sessions','training_session_detail','training_session_edit') %}<i class="nav-mark"></i>{% endif %}
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span>球队</span>
+          </a>
+          <a id="guide-nav-rewards" href="{{ url_for('rewards') }}" {{ mark(here in ('rewards','reward_orders','lottery_page')) }}>
+            {% if here in ('rewards','reward_orders','lottery_page') %}<i class="nav-mark"></i>{% endif %}
+            <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+            <span>积分</span>
+          </a>
+        </nav>
+        <div class="rail-foot">
+          {% if me.role=='admin' %}
+            <a class="rail-link" href="{{ url_for('admin') }}" {{ mark(here in ('admin','reminders','view_report')) }}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+              <span>球队管理</span>
+            </a>
+          {% endif %}
+          <div class="rail-user">
+            <a class="rail-account" href="{{ url_for('account') }}" {{ mark(here in ('account','leave')) }}>
+              <img src="{{ url_for('avatar_image',uid=me.id) }}" alt="" width="24" height="24">
+              <span>{{ me.name }}</span>
+            </a>
+            <form method="post" action="{{ url_for('logout') }}">{{ csrf_field() }}<button class="textbtn" title="退出登录">退出</button></form>
+          </div>
         </div>
       {% endif %}
-    </header>
+    </div>
     <main class="{% block main_class %}{% endblock %}">
+      {% block main_body %}
       {% for category,msg in get_flashed_messages(with_categories=true) %}
         <div class="notice{% if category=='error' %} notice-error{% endif %}" role="{{ 'alert' if category=='error' else 'status' }}">
-          {{ msg }}
+          <span>{{ msg }}</span>
         </div>
       {% endfor %}{% block content %}
 {% endblock %}
+      {% endblock %}
     </main>
-    {% if me %}{% set here=request.endpoint %}{% macro mark(on) %}{% if on %}aria-current="page"{% endif %}{% endmacro %}
-      <nav class="bottom" aria-label="主导航">
-        <a id="guide-nav-home" href="{{ url_for('home') }}" {{ mark(here in ('home','submit','history','free_training')) }}>{% if here in ('home','submit','history','free_training') %}<i class="nav-mark"></i>{% endif %}<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/></svg><span>训练</span></a>
-        <a id="guide-nav-moments" href="{{ url_for('moments_feed') }}" {{ mark(here and here.startswith('moments_')) }}>{% if here and here.startswith('moments_') %}<i class="nav-mark"></i>{% endif %}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 3z"/><path d="M8 9h8M8 12h5"/></svg><span>动态</span></a>
-        <a href="{{ url_for('matches_index') }}" {{ mark(here and here.startswith('matches_')) }}>{% if here and here.startswith('matches_') %}<i class="nav-mark"></i>{% endif %}<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8l3 2-1 4h-4l-1-4zM12 3v5M4 9l5 1M7 19l3-5M17 19l-3-5M20 9l-5 1"/></svg><span>比赛中心</span></a>
-        <a id="guide-nav-team" href="{{ url_for('team') }}" {{ mark(here in ('team','team_plans_list','team_plans_view','team_plans_edit')) }}>{% if here in ('team','team_plans_list','team_plans_view','team_plans_edit') %}<i class="nav-mark"></i>{% endif %}<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="9" r="3"/><path d="M3.5 19c0-3 2.2-5 5.5-5s5.5 2 5.5 5M16 7a3 3 0 010 5M17 14c2.4.3 3.5 2.2 3.5 5"/></svg><span>球队</span></a>
-        <a id="guide-nav-rewards" href="{{ url_for('rewards') }}" {{ mark(here in ('rewards','reward_orders')) }}>{% if here in ('rewards','reward_orders') %}<i class="nav-mark"></i>{% endif %}<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8v12M4 12h16M12 8C6 8 7 3 9 4c2 0 3 4 3 4zm0 0c6 0 5-5 3-4-2 0-3 4-3 4z"/></svg><span>积分</span></a>
-      </nav>
-    {% endif %}
     {% if me and request.endpoint=='home' and update_notice %}
       <dialog id="site-update" aria-labelledby="site-update-title">
         <div class="update-card">
-          <p class="update-date">{{ update_notice.date }} · 网站更新</p>
+          <p class="update-date">{{ update_notice.date }}</p>
           <h2 id="site-update-title">{{ update_notice.title }}</h2>
           <ul>
             {% for item in update_notice['items'] %}

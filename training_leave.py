@@ -4,6 +4,8 @@ from zoneinfo import ZoneInfo
 
 from flask import abort, flash, redirect, render_template, request, url_for
 
+from team_plans import list_plans
+
 TZ = ZoneInfo('Asia/Shanghai')
 
 
@@ -37,7 +39,7 @@ def init_schema(c):
         PRIMARY KEY(session_id,user_id))''')
 
 
-def register(app, *, db, current, login_required, now):
+def register(app, *, db, current, login_required, now, week, plans_enabled):
     def is_manager(user):
         return user['role']=='admin' or bool(user['is_captain'])
 
@@ -52,9 +54,13 @@ def register(app, *, db, current, login_required, now):
     def back(session_id):
         return redirect(url_for('training_session_detail',session_id=session_id))
 
+    @app.get('/plans', endpoint='team_plans_list')
     @app.get('/training-sessions')
     @login_required
     def training_sessions():
+        user = current()
+        stamp = now()
+        can_manage = is_manager(user)
         with db() as c:
             sessions=c.execute('''SELECT s.*,
                 (SELECT count(*) FROM users u WHERE u.active=1 AND u.deleted=0) members,
@@ -64,8 +70,10 @@ def register(app, *, db, current, login_required, now):
                 FROM training_sessions s ORDER BY CASE WHEN s.status='open' AND s.starts_at>=? THEN 0 ELSE 1 END,
                 CASE WHEN s.status='open' AND s.starts_at>=? THEN s.starts_at END ASC,
                 CASE WHEN s.status!='open' OR s.starts_at<? THEN s.starts_at END DESC,s.id DESC''',
-                (current()['id'],now(),now(),now())).fetchall()
-        return render_template('training_sessions.html',sessions=sessions,can_manage=is_manager(current()),current_time=now())
+                (user['id'],stamp,stamp,stamp)).fetchall()
+            plans = list_plans(c, can_manage) if plans_enabled() else []
+        return render_template('training_sessions.html', sessions=sessions, can_manage=can_manage,
+                               current_time=stamp, plans=plans, default_week=week())
 
     @app.route('/training-sessions/new',methods=['GET','POST'])
     @app.route('/training-sessions/<int:session_id>/edit',methods=['GET','POST'])

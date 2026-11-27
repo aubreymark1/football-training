@@ -10,7 +10,7 @@ from webauthn.helpers.structs import (AuthenticatorSelectionCriteria, ResidentKe
                                       UserVerificationRequirement, PublicKeyCredentialDescriptor)
 
 
-def setup(app, db, current, login_required, now):
+def setup(app, db, current, login_required, now, start_login):
     def relying_party():
         url=urllib.parse.urlsplit(os.environ.get('TEAM_PUBLIC_URL','http://localhost:5050'))
         if not url.hostname or url.username or url.password or (url.scheme!='https' and not (url.scheme=='http' and url.hostname=='localhost' and os.environ.get('TEAM_HTTPS')!='1')):
@@ -118,7 +118,7 @@ def setup(app, db, current, login_required, now):
                 uid,version=row['user_id'],row['session_version']
         except Exception:
             return jsonify(error='通行密钥验证失败，请重试或使用密码登录。'),400
-        session.clear();session['uid']=uid;session['version']=version;session.permanent=True
+        start_login(uid,version)
         return jsonify(ok=True)
 
     @app.post('/passkey/<int:passkey_id>/delete')

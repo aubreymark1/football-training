@@ -1,22 +1,66 @@
-/* 首页顶部：下一场比赛压成两行，把首屏留给“去提交”。颜色取自队徽的暖色。 */
-.next-match{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin:0 0 12px;padding:8px 12px;background:var(--surface);border:1px solid var(--warm-line);border-radius:12px;box-shadow:0 4px 20px var(--warm-shadow)}
-.next-match-game{display:flex;flex-direction:column;gap:2px;flex:1 1 160px;min-width:0;padding:2px 0;color:var(--ink)}
-.next-match-line{display:flex;align-items:center;gap:8px;min-width:0}
-.next-match-tag{flex:none;border-radius:999px;padding:2px 8px;background:var(--warm-wash);color:var(--warm-ink);font-size:11px;font-weight:700;letter-spacing:.04em}
-.next-match-line time{font-size:12px;font-weight:600;color:var(--warm-muted);font-variant-numeric:tabular-nums;white-space:nowrap}
-.next-match-teams{min-width:0;font-size:14px;font-weight:650;line-height:1.35;overflow-wrap:anywhere}
-.next-match-teams i{font-style:normal;font-size:12px;font-weight:400;color:var(--warm-muted);margin:0 5px}
-.next-match-centre{flex:none;display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:0 10px;border-radius:9px;color:var(--pitch-deep);font-size:13px;font-weight:600;white-space:nowrap}
-.next-match-empty{flex:1 1 auto;margin:0;font-size:13px;color:var(--muted)}
-@media(hover:hover){
-  .next-match-centre:hover{text-decoration:underline}
-  .next-match-game:hover .next-match-teams{color:var(--warm-ink)}
+.home-header{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:20px}
+.home-period{margin:0 0 10px;color:var(--text-2);font-size:13px;font-variant-numeric:tabular-nums}
+.home-header h1{font-size:clamp(38px,5.3vw,68px);font-weight:560;line-height:1.08;letter-spacing:-.045em}
+.home-summary{margin:12px 0 0;font-size:15px;color:var(--text-2)}
+.home-actions{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.home-actions .smallbtn{min-height:40px;padding:0 16px}
+
+.week-progress{margin:36px 0 20px;padding:18px 0 16px;border-top:1px solid var(--line-strong);border-bottom:1px solid var(--line)}
+.week-progress>header{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.week-progress h2{font-size:17px}
+.week-progress header p{margin:0;color:var(--text-2);font-size:13px;font-variant-numeric:tabular-nums}
+.week-progress header strong{margin-left:4px;font-size:26px;font-weight:570;color:var(--text-1)}
+.week-progress header span{color:var(--text-3)}
+.week-axis{position:relative;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));list-style:none;margin:16px 0 0;padding:0;isolation:isolate}
+.week-axis::before{content:"";position:absolute;z-index:-1;top:35px;left:calc(100% / 14);right:calc(100% / 14);height:1px;background:var(--line-strong)}
+.week-axis li{display:grid;grid-template-rows:20px 14px 22px;justify-items:center;align-items:center;gap:8px;color:var(--text-2);font-size:12px}
+.week-axis time{font-size:13px;font-variant-numeric:tabular-nums;color:var(--text-3)}
+.week-tick{width:8px;height:8px;border:1px solid var(--text-3);border-radius:50%;background:var(--bg-page)}
+.week-axis .on .week-tick{border-color:var(--accent);background:var(--accent)}
+.week-axis .today .week-tick{outline:1px solid var(--accent);outline-offset:3px}
+.week-axis .today .week-day,.week-axis .today time{color:var(--accent);font-weight:600}
+.week-axis .future .week-tick{width:1px;height:10px;border:0;border-radius:0;background:var(--line-strong)}
+
+.home-grid{display:grid;gap:32px;margin-top:26px}
+.home-main,.home-side,.home-grid .grow{min-width:0}
+.home-grid .section-head{margin:0 0 10px}
+.home-grid .section-head h2{font-size:clamp(19px,2.2vw,24px);font-weight:560}
+.home-grid p,.home-grid h3{overflow-wrap:anywhere}
+.home-grid .task{padding:16px 0;margin:0;border:0;border-top:1px solid var(--line);background:transparent;border-radius:0;box-shadow:none;gap:12px}
+.home-grid .task h3{font-size:16px;font-weight:550}
+.home-grid .task p{margin:4px 0;color:var(--text-2)}
+.home-grid .task .state{background:none;padding:0;border:0}
+.home-grid .task-go{flex:none;white-space:nowrap}
+.home-grid .required-label{margin:8px 0 12px;padding:0;border:0;background:none;color:var(--text-2)}
+.home-grid .stack{gap:0}
+.home-grid .module-bar{margin:28px 0 4px}
+.home-grid .module-title{font-size:17px}
+.module-filters{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.module-filters button{min-height:36px;padding:0 2px;border:0;border-bottom:1px solid transparent;background:transparent;color:var(--text-2)}
+.module-filters button.is-active{border-color:var(--accent);color:var(--text-1);font-weight:540}
+.home-grid .module{margin:0;border:0;border-top:1px solid var(--line);border-radius:0;background:none}
+.home-grid .module .module-head{padding:0;border:0}
+.home-grid .module .module-head::after{margin-right:3px}
+.home-grid .module .stack{padding:0 0 4px}
+.home-grid .module .task,.home-grid .module .task:first-child{border-top:1px solid var(--line)}
+.home-grid .task-points{margin-right:10px}
+.home-fixture{padding-bottom:18px;margin-bottom:20px;border-bottom:1px solid var(--line)}
+.next-match-game{display:grid;gap:4px;padding:2px 0 6px}
+.next-match-game strong{font-size:17px;font-weight:550;overflow-wrap:anywhere}
+.next-match-game strong span{font-weight:400;color:var(--text-3)}
+.next-match-game time{color:var(--text-2);font-size:13px;font-variant-numeric:tabular-nums}
+.next-match-game:hover strong{text-decoration:underline;text-underline-offset:4px}
+.home-records .listrow{padding:12px 0;border-top:1px solid var(--line);border-bottom:0}
+.home-records .listrow .status{background:none;padding-inline:0}
+
+@media(min-width:960px){
+  .home-grid{grid-template-columns:minmax(0,1.7fr) minmax(245px,1fr);gap:clamp(32px,5vw,76px);align-items:start}
+  .home-side{padding-left:clamp(20px,3vw,48px);border-left:1px solid var(--line);position:sticky;top:32px}
 }
-/* 手机上先收紧看板，让“去提交”留在一屏里 */
-@media(max-width:480px){
-  .board{padding:16px 16px 14px}
-  .board h1{font-size:22px}
-  .board-points strong{font-size:30px}
-  .board-status{margin-top:10px;font-size:14px}
-  .track{margin-top:14px}
+@media(max-width:560px){
+  .home-actions{gap:16px}
+  .week-progress{margin-top:24px}
+  .home-grid{gap:18px;margin-top:20px}
+  .home-grid .section-head h2{font-size:20px}
+  .home-side{border-top:1px solid var(--line-strong);padding-top:16px}
 }

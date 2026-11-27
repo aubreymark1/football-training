@@ -176,7 +176,7 @@ def week_strip(c,uid):
     days=[]
     for i,label in enumerate('一二三四五六日'):
         d=monday+datetime.timedelta(days=i)
-        days.append(dict(label=label,trained=d.isoformat() in trained,today=d==today,future=d>today))
+        days.append(dict(label=label,date=d.isoformat(),day=d.day,trained=d.isoformat() in trained,today=d==today,future=d>today))
     return dict(days=days,days_left=6-today.weekday(),elapsed=round(today.weekday()/6,3),trained=sum(d['trained'] for d in days),range='%d月%d日 – %d月%d日'%(monday.month,monday.day,sunday.month,sunday.day))
 def training_trend(c,uid,weeks=8):
     """最近几周每周的训练分钟数和次数（不含被驳回的记录），以及连续打卡周数。"""
@@ -197,6 +197,10 @@ def training_trend(c,uid,weeks=8):
     top=max(step,math.ceil(peak/step)*step)
     for x in series: x['height']=round(x['minutes']*100/top,2); x['labelled']=x['minutes']>0 and (x['current'] or x['minutes']==peak)
     return dict(series=series,streak=streak,top=top,ticks=[dict(value=n,at=round(n*100/top,2)) for n in range(step,top+1,step)],total_sessions=sum(n for _,n in totals.values()),total_minutes=sum(m for m,_ in totals.values()),week_minutes=series[-1]['minutes'],week_sessions=series[-1]['sessions'])
+def start_login(uid, version):
+    session.clear()
+    session.update(uid=uid,version=version)
+
 def current():
     if not session.get('uid'): return None
     with db() as c: user=c.execute('SELECT id,name,role,active,session_version,email,email_verified,deleted,tour_seen,update_seen,real_name,is_captain FROM users WHERE id=?',(session['uid'],)).fetchone()
@@ -225,6 +229,29 @@ def unavailable_plans():
         abort(404)
     if not plans_enabled() and (request.path == '/plans' or request.path.startswith('/plans/') or request.endpoint == 'member_captain'):
         abort(404)
+
+@app.before_request
+def discard_cached_login():
+    if request.endpoint == 'static' or not session.get('uid'):
+        return
+    if session.permanent:
+        session.clear()
+        if request.method == 'POST':
+            return redirect(url_for('login'),code=303)
+        return
+    # Top-level entrances from the address bar, bookmarks or another site require a new sign-in.
+    if (request.method == 'GET' and request.headers.get('Sec-Fetch-Mode') == 'navigate'
+            and request.headers.get('Sec-Fetch-Dest') == 'document'
+            and request.headers.get('Sec-Fetch-Site') in ('none','same-site','cross-site')
+            and 'prefetch' not in request.headers.get('Sec-Purpose','')):
+        session.clear()
+
+@app.after_request
+def no_cached_account_pages(response):
+    endpoint = request.endpoint or ''
+    if endpoint != 'static' and (response.mimetype == 'text/html' or endpoint.startswith('passkey_')):
+        response.headers['Cache-Control'] = 'private, no-store'
+    return response
 
 @app.before_request
 def csrf():
@@ -262,7 +289,7 @@ def login():
         if account_attempts >= 8 or ip_attempts >= 60:
             flash('登录尝试过多，请 15 分钟后再试。','error'); return render_template('login.html'), 429
         if user and not user['deleted'] and user['active'] and check_password_hash(user['password'],request.form.get('password','')):
-            session.clear(); session['uid']=user['id']; session['version']=user['session_version']; session.permanent=True
+            start_login(user['id'],user['session_version'])
             with db() as c: c.execute('DELETE FROM login_failures WHERE address IN (?,?)',(address,account_key))
             return redirect(url_for('home'))
         with db() as c:
@@ -371,7 +398,7 @@ def join():
                 if not verify_email_code(c,'register',email,code):flash('验证码无效或已过期，请重新获取。','error');return redirect(url_for('join'))
                 uid=c.execute('INSERT INTO users(name,real_name,password,email,email_verified,joined_week) VALUES(?,?,?,?,1,?)',(name,real_name,generate_password_hash(password),email,week())).lastrowid
         except sqlite3.IntegrityError:flash('昵称或邮箱已被使用。','error');return redirect(url_for('join'))
-        session.clear();session['uid']=uid;session['version']=0;session.permanent=True;return redirect(url_for('home'))
+        start_login(uid,0);return redirect(url_for('home'))
     return render_template('login.html',join=True)
 @app.get('/')
 @login_required
@@ -381,7 +408,6 @@ def home():
     fixtures=match_center.upcoming_matches(db, today)
     with db() as c:
         tasks=c.execute('''SELECT t.*, (SELECT count(*) FROM records r WHERE r.task_id=t.id AND r.user_id=? AND r.status='approved') done, (SELECT count(*) FROM records r WHERE r.task_id=t.id AND r.user_id=? AND r.status='pending') pending, EXISTS(SELECT 1 FROM exemptions e WHERE e.task_id=t.id AND e.user_id=?) exempt FROM tasks t WHERE t.deleted=0 AND week=? ORDER BY kind DESC,id''',(u['id'],u['id'],u['id'],w)).fetchall()
-        points=c.execute('SELECT coalesce(sum(amount),0) FROM ledger WHERE user_id=?',(u['id'],)).fetchone()[0]
         records=c.execute("SELECT r.*,coalesce(l.amount,0) AS earned_points,(l.id IS NOT NULL) AS has_points_entry,coalesce(t.kind,'free') AS task_kind,coalesce(t.title,'自主训练') AS title FROM records r LEFT JOIN tasks t ON t.id=r.task_id LEFT JOIN ledger l ON l.record_id=r.id WHERE r.user_id=? ORDER BY r.id DESC LIMIT 5",(u['id'],)).fetchall()
         report=c.execute('SELECT * FROM reports WHERE user_id=? ORDER BY week DESC LIMIT 1',(u['id'],)).fetchone()
         strip=week_strip(c,u['id'])
@@ -391,7 +417,7 @@ def home():
     modules=[(code,label,[t for t in tasks if t['kind']=='bonus' and (t['module'] or 'fitness')==code]) for code,label in (('fitness','体能训练'),('strength','力量训练'),('ball','有球训练'))]
     exempt_all=bool(required) and all(t['exempt'] for t in required)
     update_notice = site_updates.CURRENT if u['update_seen'] < site_updates.CURRENT['version'] else None
-    return render_template('home.html',tasks=tasks,required=required,modules=modules,has_bonus=any(items for _,_,items in modules),points=points,records=records,report=report,standing=mine,strip=strip,required_done=sum(1 for t in required if t['done'] or t['exempt']),exempt_all=exempt_all,fixtures=fixtures,update_notice=update_notice)
+    return render_template('home.html',tasks=tasks,required=required,modules=modules,has_bonus=any(items for _,_,items in modules),records=records,report=report,standing=mine,strip=strip,required_done=sum(1 for t in required if t['done'] or t['exempt']),exempt_all=exempt_all,fixtures=fixtures,update_notice=update_notice)
 @app.route('/submit/<int:tid>',methods=['GET','POST'])
 @login_required
 def submit(tid):
@@ -664,7 +690,7 @@ def account():
         leave_counts=match_leave.counts(c,current()['id'])
     return render_template('account.html',passkeys=passkeys,leave_counts=leave_counts)
 import passkeys as passkey_module
-passkey_module.setup(app,db,current,login_required,now)
+passkey_module.setup(app,db,current,login_required,now,start_login)
 @app.post('/account/real-name')
 @login_required
 def account_real_name():
@@ -1124,7 +1150,7 @@ def view_report(uid):
     return render_template('reports.html',reports=reports,user=user)
 import team_plans
 team_plans.register(app, db=db, current=current, login_required=login_required,
-                    admin_required=admin_required, now=now, week=week,
+                    admin_required=admin_required, now=now,
                     ai_call=lambda *a, **kw: ai_call(*a, **kw),
                     search_web=lambda *a, **kw: search_web(*a, **kw), restricted_request=restricted_ai_request,
                     restricted_output=restricted_ai_output)
@@ -1133,7 +1159,8 @@ avatars.register(app, db=db, current=current, login_required=login_required, now
 import lottery
 lottery.register(app, db=db, current=current, login_required=login_required, now=now, settle=settle_required_penalties)
 match_center.register(app, db=db, current=current, login_required=login_required, now=now)
-training_leave.register(app, db=db, current=current, login_required=login_required, now=now)
+training_leave.register(app, db=db, current=current, login_required=login_required, now=now,
+                        week=week, plans_enabled=plans_enabled)
 match_leave.register(app, db=db, current=current, login_required=login_required, now=now)
 if __name__=='__main__':
     import argparse

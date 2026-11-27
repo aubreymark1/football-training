@@ -1,0 +1,398 @@
+{# 3D steel crest faces from the supplied CAMPEONES · EST 1924 demo. #}
+<div class="auth-crest" id="auth-crest">
+  <div class="slab-scale-wrap" id="slab-scale-wrap">
+    <div class="slab-scene" id="slab-scene">
+      <!-- 动态地面投影 -->
+      <div class="ground-shadow" id="ground-shadow"></div>
+
+      <!-- 3D 实心钢板主体 -->
+      <div class="slab-3d" id="slab-3d">
+        <!-- 1. 72面无缝圆柱 CNC 车削钢板侧壁（由 JS 动态生成并逐帧计算实时金属光影） -->
+        <div class="edge-wall" id="edge-wall"></div>
+
+        <!-- 2. 背面 CNC 精加工钢板（translateZ(-T/2) rotateY(180deg)） -->
+        <div class="slab-back" id="slab-back">
+          <svg viewBox="0 0 500 500" class="crest-svg" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="back-steel-grad" cx="35%" cy="30%" r="72%">
+                <stop id="back-s1" offset="0%" stop-color="#c6ced8" />
+                <stop id="back-s2" offset="38%" stop-color="#8c96a4" />
+                <stop id="back-s3" offset="74%" stop-color="#5b6472" />
+                <stop id="back-s4" offset="100%" stop-color="#3c434f" />
+              </radialGradient>
+              <filter id="back-brush" x="0%" y="0%" width="100%" height="100%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.015 0.65" numOctaves="3" seed="21" result="n" />
+                <feColorMatrix type="matrix" values="0 0 0 0 0.6  0 0 0 0 0.62  0 0 0 0 0.66  0 0 0 0.14 0" in="n" result="cn" />
+                <feComposite in="cn" in2="SourceGraphic" operator="atop" />
+              </filter>
+            </defs>
+            <circle cx="250" cy="250" r="248" fill="url(#back-steel-grad)" />
+            <circle cx="250" cy="250" r="248" fill="url(#back-steel-grad)" filter="url(#back-brush)" opacity="0.95" />
+            <!-- CNC 同心车削凹槽环 -->
+            <circle cx="250" cy="250" r="228" fill="none" stroke="rgba(0,0,0,0.38)" stroke-width="4" />
+            <circle cx="250" cy="250" r="225" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="1.5" />
+            <circle cx="250" cy="250" r="196" fill="none" stroke="rgba(0,0,0,0.22)" stroke-width="1.5" stroke-dasharray="6 4" />
+            <circle cx="250" cy="250" r="168" fill="none" stroke="rgba(0,0,0,0.28)" stroke-width="2" />
+            <circle cx="250" cy="250" r="166" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="1" />
+
+            <!-- 激光蚀刻技术铭文 -->
+            <g fill="rgba(20, 24, 30, 0.78)" text-anchor="middle" style="text-shadow: 0 1px 0 rgba(255,255,255,0.32);">
+              <text x="250" y="162" font-family="'JetBrains Mono', monospace" font-size="13" font-weight="700" letter-spacing="4">OFFICIAL SOLID METAL CREST</text>
+              <line x1="150" y1="180" x2="350" y2="180" stroke="rgba(20,24,30,0.45)" stroke-width="1.5" />
+              <text x="250" y="232" font-family="'Montserrat', sans-serif" font-size="34" font-weight="900" letter-spacing="3">CAMPEONES</text>
+              <text x="250" y="266" font-family="'Cinzel', serif" font-size="22" font-weight="900" letter-spacing="5">EST. 1924</text>
+              <line x1="175" y1="286" x2="325" y2="286" stroke="rgba(20,24,30,0.45)" stroke-width="1.5" />
+              <text x="250" y="318" font-family="'Montserrat', sans-serif" font-size="14" font-weight="800" letter-spacing="3.5">LN UNITED — SOLID STEEL EDITION</text>
+              <text x="250" y="348" font-family="'JetBrains Mono', monospace" font-size="12" font-weight="700" letter-spacing="2.5">GRADE 316L · CNC MILLED</text>
+              <text x="250" y="382" font-family="'JetBrains Mono', monospace" font-size="13" font-weight="700" letter-spacing="4" opacity="0.85">NO. 01924</text>
+            </g>
+          </svg>
+        </div>
+
+        <!-- 3. 正面基底冷轧钢板层（translateZ(+T/2)） -->
+        <div class="slab-front-base" id="slab-front-base">
+          <svg id="crest-base-svg" viewBox="0 0 500 500" class="crest-svg" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <!-- 实时点光源镜面滤镜 -->
+              <filter id="steel-specular" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
+                <feGaussianBlur in="SourceAlpha" stdDeviation="2.2" result="blurAlpha" />
+                <feSpecularLighting
+                  id="svg-specular-light"
+                  in="blurAlpha"
+                  surfaceScale="5.5"
+                  specularConstant="1.15"
+                  specularExponent="26"
+                  lighting-color="#eef5ff"
+                  result="specOut"
+                >
+                  <fePointLight id="svg-point-light" x="180" y="140" z="175" />
+                </feSpecularLighting>
+                <feComposite in="specOut" in2="SourceAlpha" operator="in" result="specClipped" />
+                <feComposite in="SourceGraphic" in2="specClipped" operator="arithmetic" k1="0" k2="1" k3="0.68" k4="0" />
+              </filter>
+
+              <!-- 冷轧钢板横向拉丝纹理 -->
+              <filter id="cold-rolled-grain" x="0%" y="0%" width="100%" height="100%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.62" numOctaves="3" seed="7" result="noise" />
+                <feColorMatrix
+                  type="matrix"
+                  values="0 0 0 0 0.62
+                          0 0 0 0 0.65
+                          0 0 0 0 0.70
+                          0 0 0 0.13 0"
+                  in="noise"
+                  result="grain"
+                />
+                <feComposite in="grain" in2="SourceGraphic" operator="atop" />
+              </filter>
+
+              <!-- 基底冷轧精钢渐变 -->
+              <linearGradient id="grad-plate-base" x1="12%" y1="8%" x2="88%" y2="92%">
+                <stop id="base-s1" offset="0%" stop-color="#e3e8ee" />
+                <stop id="base-s2" offset="28%" stop-color="#c3cbd6" />
+                <stop id="base-s3" offset="52%" stop-color="#dce2ea" />
+                <stop id="base-s4" offset="78%" stop-color="#a5aebc" />
+                <stop id="base-s5" offset="100%" stop-color="#ccd4de" />
+              </linearGradient>
+
+              <!-- 深色蚀刻/烤漆渐变（用于基底平行线与细框） -->
+              <linearGradient id="grad-base-ink" x1="10%" y1="5%" x2="90%" y2="95%">
+                <stop id="bink-s1" offset="0%" stop-color="#2c3038" />
+                <stop id="bink-s2" offset="50%" stop-color="#171a20" />
+                <stop id="bink-s3" offset="100%" stop-color="#252930" />
+              </linearGradient>
+
+              <clipPath id="clip-base-circle">
+                <circle cx="250" cy="250" r="247" />
+              </clipPath>
+              <clipPath id="clip-base-outside-band">
+                <rect x="0" y="0" width="500" height="186" />
+                <rect x="0" y="314" width="500" height="186" />
+              </clipPath>
+              <clipPath id="clip-lower-semicircle">
+                <circle cx="250" cy="250" r="153" />
+              </clipPath>
+            </defs>
+
+            <g clip-path="url(#clip-base-circle)">
+              <!-- 基底冷轧钢盘 -->
+              <circle cx="250" cy="250" r="247" fill="url(#grad-plate-base)" />
+              <circle cx="250" cy="250" r="247" fill="url(#grad-plate-base)" filter="url(#cold-rolled-grain)" />
+
+              <!-- 细微工业划痕与机加工光泽 -->
+              <g stroke="rgba(255,255,255,0.16)" stroke-width="0.8" opacity="0.6">
+                <line x1="60" y1="125" x2="430" y2="118" />
+                <line x1="40" y1="365" x2="450" y2="372" />
+              </g>
+
+              <!-- 下半内圆 8 条均匀分布的水平平行蚀刻线 -->
+              <g clip-path="url(#clip-lower-semicircle)" stroke="url(#grad-base-ink)" stroke-width="2.4" opacity="0.92">
+                <line x1="85" y1="323" x2="415" y2="323" />
+                <line x1="85" y1="331.5" x2="415" y2="331.5" />
+                <line x1="85" y1="340" x2="415" y2="340" />
+                <line x1="85" y1="348.5" x2="415" y2="348.5" />
+                <line x1="85" y1="357" x2="415" y2="357" />
+                <line x1="85" y1="365.5" x2="415" y2="365.5" />
+                <line x1="85" y1="374" x2="415" y2="374" />
+                <line x1="85" y1="382.5" x2="415" y2="382.5" />
+              </g>
+
+              <!-- 同心细装饰线（被中间横幅截断） -->
+              <g clip-path="url(#clip-base-outside-band)" fill="none" stroke="url(#grad-base-ink)">
+                <circle cx="250" cy="250" r="223" stroke-width="2.2" />
+                <circle cx="250" cy="250" r="156" stroke-width="2.2" />
+              </g>
+
+              <!-- 钢板外缘 CNC 45° 倒角亮边 -->
+              <circle cx="250" cy="250" r="246" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="2.2" />
+            </g>
+          </svg>
+        </div>
+
+        <!-- 4. 正面立体冲压/精雕浮雕层（translateZ(+T/2 + 3.5px)，产生真实立体落差阴影） -->
+        <div class="slab-front-relief" id="slab-front-relief">
+          <svg id="crest-relief-svg" viewBox="0 0 500 500" class="crest-svg" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <!-- 浮雕层实时点光源 -->
+              <filter id="relief-specular" x="-12%" y="-12%" width="124%" height="124%" color-interpolation-filters="sRGB">
+                <feGaussianBlur in="SourceAlpha" stdDeviation="2.0" result="blurA" />
+                <feSpecularLighting
+                  id="relief-specular-light"
+                  in="blurA"
+                  surfaceScale="6.0"
+                  specularConstant="1.25"
+                  specularExponent="28"
+                  lighting-color="#eef5ff"
+                  result="specR"
+                >
+                  <fePointLight id="relief-point-light" x="180" y="140" z="175" />
+                </feSpecularLighting>
+                <feComposite in="specR" in2="SourceAlpha" operator="in" result="specRC" />
+                <feComposite in="SourceGraphic" in2="specRC" operator="arithmetic" k1="0" k2="1" k3="0.72" k4="0" />
+              </filter>
+
+              <!-- 主浮雕深色金属（外环、内粗环、横幅、文字） -->
+              <linearGradient id="grad-relief-main" x1="10%" y1="5%" x2="90%" y2="95%">
+                <stop id="rmain-s1" offset="0%" stop-color="#383e48" />
+                <stop id="rmain-s2" offset="28%" stop-color="#1c2026" />
+                <stop id="rmain-s3" offset="52%" stop-color="#2e343d" />
+                <stop id="rmain-s4" offset="78%" stop-color="#13161b" />
+                <stop id="rmain-s5" offset="100%" stop-color="#292e36" />
+              </linearGradient>
+
+              <!-- 暖铜橙/烧蓝铜金属（EST & 1924） -->
+              <linearGradient id="grad-relief-copper" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop id="rcop-s1" offset="0%" stop-color="#f59a60" />
+                <stop id="rcop-s2" offset="40%" stop-color="#D4622A" />
+                <stop id="rcop-s3" offset="75%" stop-color="#ad4416" />
+                <stop id="rcop-s4" offset="100%" stop-color="#e88048" />
+              </linearGradient>
+
+              <!-- 绯红烤漆珐琅（中央圆环与风景） -->
+              <linearGradient id="grad-relief-crimson" x1="15%" y1="10%" x2="85%" y2="90%">
+                <stop id="rcrim-s1" offset="0%" stop-color="#e62b5a" />
+                <stop id="rcrim-s2" offset="42%" stop-color="#C81845" />
+                <stop id="rcrim-s3" offset="78%" stop-color="#990e31" />
+                <stop id="rcrim-s4" offset="100%" stop-color="#d41c4a" />
+              </linearGradient>
+
+              <!-- 中央凹陷精钢银底 -->
+              <linearGradient id="grad-center-steel" x1="12%" y1="8%" x2="88%" y2="92%">
+                <stop id="csteel-s1" offset="0%" stop-color="#eef2f6" />
+                <stop id="csteel-s2" offset="45%" stop-color="#cfd6df" />
+                <stop id="csteel-s3" offset="75%" stop-color="#dde3eb" />
+                <stop id="csteel-s4" offset="100%" stop-color="#b4bdc9" />
+              </linearGradient>
+
+              <!-- 五角星金属 -->
+              <linearGradient id="grad-relief-star" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop id="rstar-s1" offset="0%" stop-color="#4e5663" />
+                <stop id="rstar-s2" offset="48%" stop-color="#171a20" />
+                <stop id="rstar-s3" offset="100%" stop-color="#313742" />
+              </linearGradient>
+
+              <!-- 裁剪路径 -->
+              <clipPath id="clip-relief-outer">
+                <circle cx="250" cy="250" r="247" />
+              </clipPath>
+              <clipPath id="clip-relief-band">
+                <circle cx="250" cy="250" r="236" />
+              </clipPath>
+              <clipPath id="clip-relief-outside-band">
+                <rect x="0" y="0" width="500" height="186" />
+                <rect x="0" y="314" width="500" height="186" />
+              </clipPath>
+              <clipPath id="clip-center-inner">
+                <circle cx="250" cy="250" r="77" />
+              </clipPath>
+
+              <!-- 弧形文字路径 -->
+              <path id="path-top-campeones" d="M 67,250 A 183,183 0 1,1 433,250" fill="none" />
+              <path id="path-bottom-ln" d="M 40,250 A 210,210 0 0,0 460,250" fill="none" />
+            </defs>
+
+            <g clip-path="url(#clip-relief-outer)">
+              <!-- 1. 内粗分隔环（r=164，被横幅截断） -->
+              <g clip-path="url(#clip-relief-outside-band)">
+                <circle cx="250" cy="250" r="164" fill="none" stroke="url(#grad-relief-main)" stroke-width="8" filter="url(#relief-specular)" />
+              </g>
+
+              <!-- 2. 上方三颗弧形立体五角星 -->
+              <g filter="url(#relief-specular)">
+                <!-- 中心星 x=250, y=132 -->
+                <polygon
+                  points="250,117 254.3,125.7 263.9,127.1 257,133.9 258.6,143.5 250,139 241.4,143.5 243,133.9 236.1,127.1 245.7,125.7"
+                  fill="url(#grad-relief-star)"
+                  stroke="rgba(255,255,255,0.22)"
+                  stroke-width="0.6"
+                />
+                <!-- 左侧星 x=192, y=148 -->
+                <polygon
+                  points="250,117 254.3,125.7 263.9,127.1 257,133.9 258.6,143.5 250,139 241.4,143.5 243,133.9 236.1,127.1 245.7,125.7"
+                  fill="url(#grad-relief-star)"
+                  stroke="rgba(255,255,255,0.22)"
+                  stroke-width="0.6"
+                  transform="translate(-58, 16) rotate(-22, 250, 132)"
+                />
+                <!-- 右侧星 x=308, y=148 -->
+                <polygon
+                  points="250,117 254.3,125.7 263.9,127.1 257,133.9 258.6,143.5 250,139 241.4,143.5 243,133.9 236.1,127.1 245.7,125.7"
+                  fill="url(#grad-relief-star)"
+                  stroke="rgba(255,255,255,0.22)"
+                  stroke-width="0.6"
+                  transform="translate(58, 16) rotate(22, 250, 132)"
+                />
+              </g>
+
+              <!-- Keep lettering outside the specular filter to avoid clipped glyphs in Chromium. -->
+              <g>
+                <text
+                  font-family="'Montserrat', 'Arial Black', sans-serif"
+                  font-weight="900"
+                  font-size="47"
+                  letter-spacing="4.2"
+                  fill="url(#grad-relief-main)"
+                >
+                  <textPath href="#path-top-campeones" startOffset="50%" text-anchor="middle">CAMPEONES</textPath>
+                </text>
+              </g>
+
+              <!-- 4. 底部正向弧形字 "LN United" -->
+              <g>
+                <text
+                  font-family="'Montserrat', 'Inter', sans-serif"
+                  font-weight="800"
+                  font-size="41"
+                  letter-spacing="4"
+                  fill="url(#grad-relief-main)"
+                >
+                  <textPath href="#path-bottom-ln" startOffset="50%" text-anchor="middle">LN United</textPath>
+                </text>
+              </g>
+
+              <!-- 5. 中间贯穿宽横幅（y=186~314，无缝衔接外环） -->
+              <g clip-path="url(#clip-relief-band)" filter="url(#relief-specular)">
+                <rect x="0" y="186" width="500" height="128" fill="url(#grad-relief-main)" />
+                <line x1="10" y1="187.2" x2="490" y2="187.2" stroke="rgba(255,255,255,0.26)" stroke-width="1.3" />
+                <line x1="10" y1="312.8" x2="490" y2="312.8" stroke="rgba(0,0,0,0.5)" stroke-width="1.4" />
+              </g>
+
+              <!-- 6. 横幅左右暖铜色 "EST" 与 "1924" -->
+              <g>
+                <text
+                  x="90"
+                  y="264"
+                  text-anchor="middle"
+                  font-family="'Cinzel', Georgia, serif"
+                  font-weight="900"
+                  font-size="42"
+                  letter-spacing="2"
+                  fill="url(#grad-relief-copper)"
+                >EST</text>
+                <text
+                  x="410"
+                  y="264"
+                  text-anchor="middle"
+                  font-family="'Cinzel', Georgia, serif"
+                  font-weight="900"
+                  font-size="44"
+                  letter-spacing="1.5"
+                  fill="url(#grad-relief-copper)"
+                >1924</text>
+              </g>
+
+              <!-- 7. 外层厚重深色金属外环（r=238, stroke=18） -->
+              <circle
+                cx="250"
+                cy="250"
+                r="238"
+                fill="none"
+                stroke="url(#grad-relief-main)"
+                stroke-width="18"
+                filter="url(#relief-specular)"
+              />
+              <!-- 外环内外双倒角高光线 -->
+              <circle cx="250" cy="250" r="246.2" fill="none" stroke="rgba(255,255,255,0.42)" stroke-width="1.4" />
+              <circle cx="250" cy="250" r="229.2" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1.2" />
+
+              <!-- 8. 正中央圆形主徽章（压在横幅正中） -->
+              <g>
+                <!-- 凹陷拉丝精钢银底 -->
+                <circle cx="250" cy="250" r="78" fill="url(#grad-center-steel)" />
+
+                <!-- 绯红烤漆三层风景剪影（严格裁剪在 r=77 内） -->
+                <g clip-path="url(#clip-center-inner)" fill="url(#grad-relief-crimson)">
+                  <!-- 上部圆润山峰 -->
+                  <path d="M 166,245
+                           L 166,237
+                           C 191,223 215,204 236,197
+                           C 246,194 255,194 265,197
+                           C 286,204 310,223 334,237
+                           L 334,245 Z" />
+                  <!-- 中下部波浪岸线带 -->
+                  <path d="M 166,262
+                           C 176,257 185,264 195,261
+                           C 205,258 214,264 224,260
+                           C 234,257 242,263 252,260
+                           C 262,257 271,263 282,259
+                           C 293,256 303,263 314,259
+                           C 322,257 328,261 334,260
+                           L 334,276
+                           L 166,276 Z" />
+                  <!-- 底部 S 形蜿蜒河流 -->
+                  <path d="M 244,274
+                           C 234,282 245,288 258,294
+                           C 269,299 266,307 248,315
+                           C 237,320 227,325 220,331
+                           L 280,331
+                           C 286,318 288,305 276,295
+                           C 266,286 254,282 259,274 Z" />
+                </g>
+
+                <!-- 中央厚实绯红烤漆圆环（r=84, stroke=14） -->
+                <circle
+                  cx="250"
+                  cy="250"
+                  r="84"
+                  fill="none"
+                  stroke="url(#grad-relief-crimson)"
+                  stroke-width="14"
+                  filter="url(#relief-specular)"
+                />
+                <!-- 烤漆环高光倒角 -->
+                <circle cx="250" cy="250" r="90.5" fill="none" stroke="rgba(255,220,232,0.38)" stroke-width="1.2" />
+                <circle cx="250" cy="250" r="77.2" fill="none" stroke="rgba(60,4,20,0.4)" stroke-width="1.2" />
+              </g>
+            </g>
+          </svg>
+        </div>
+
+        <!-- 5. 正面表层动态扫光 -->
+        <div class="slab-front-sheen" id="slab-front-sheen">
+          <div class="sheen-beam" id="sheen-beam"></div>
+          <div class="idle-glint"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

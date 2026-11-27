@@ -70,3 +70,18 @@ test('failure of an obsolete image leaves the new screenshot intact', async () =
   assert.equal(env.filename.textContent,'latest.png');
   assert.equal(env.error.hidden,true);
 });
+
+test('resetting a record form discards an in-flight screenshot compression', async () => {
+  const env = environment();
+  env.input.files = [{name: 'previous-task.png', size: 9 * 1024 * 1024}];
+  const processing = env.input.emit('change');
+  const reset = env.form.emit('reset');
+  env.input.files = [];
+  await reset;
+  env.bitmaps.get('previous-task.png').resolve({width: 3000, height: 3000});
+  await processing;
+  assert.deepEqual(env.input.files, []);
+  assert.equal(env.filename.textContent, '');
+  assert.equal(env.error.hidden, true);
+  assert.equal(env.button.disabled, false);
+});

@@ -1,36 +1,45 @@
-{% extends 'base.html' %}
-{% block title %}登录 · LINGNAN UNITED{% endblock %}
+{% extends 'auth_base.html' %}
+{% block title %}{{ '加入球队' if join else '登录' }} · LINGNAN UNITED{% endblock %}
 {% block content %}
-<section class="auth">
-    <img class="authlogo" src="{{ url_for('static',filename='brand/logo-256.png') }}" srcset="{{ url_for('static',filename='brand/logo-256.png') }} 1x, {{ url_for('static',filename='brand/logo-512.png') }} 2x" alt="LINGNAN UNITED" width="112" height="112">
-    <h1>LINGNAN UNITED</h1>
-    <p class="muted">{{ '填好下面的信息，加入球队后就能看到每周任务。' if join else '登录后查看本周任务、提交训练记录。' }}</p>
-    <form method="post" class="card stack" data-lock="{{ '提交中' if join else '登录中' }}" {% if join %}id="join-form"{% endif %}>
-      {{ csrf_field() }}
-      <h2>{{ '加入球队' if join else '登录' }}</h2>
-      <label>昵称<input name="name" maxlength="40" required autocomplete="username"></label>
-      {% if join %}
-        <label>真实姓名<input name="real_name" maxlength="20" required placeholder="队内显示，例如 张伟"></label>
-      {% endif %}
-      <label>
-        密码<input name="password" type="password" minlength="10" maxlength="128" required autocomplete="{{ 'new-password' if join else 'current-password' }}">
-      </label>
-      {% if join %}
-        <label>邀请码<input name="code" required maxlength="64" autocomplete="off"></label>
-        <label>邮箱<input name="email" type="email" maxlength="254" required autocomplete="email"></label>
-        <div class="verification-row">
-          <label>邮箱验证码<input name="email_code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="one-time-code"></label>
-          <button type="button" id="send-code" class="outline" data-url="{{ url_for('join_send_code') }}">获取验证码</button>
-        </div>
-        <p class="hint" id="code-status" role="status">验证码有效期为 10 分钟</p>
-      {% endif %}<button class="primary">{{ '加入球队' if join else '登录' }}</button>{% if not join %}<button type="button" class="outline" id="passkey-login" data-csrf="{{ csrf_token }}" data-options="{{ url_for('passkey_login_options') }}" data-finish="{{ url_for('passkey_login_finish') }}" data-home="{{ url_for('home') }}">使用通行密钥登录</button>
-        <p class="hint" id="passkey-login-status" role="status"></p>
-        <a class="center" href="{{ url_for('reset_password') }}">忘记昵称或密码？</a>{% endif %}<a class="center" href="{{ url_for('login' if join else 'join') }}">{{ '已有账号？登录' if join else '收到邀请？加入球队' }}</a>
-    </form>
+  <h1 id="auth-title">{{ '加入球队' if join else '登录球队账号' }}</h1>
+  <p class="auth-lede">{{ '凭队内邀请码注册账号' if join else '训练打卡、集体训练和比赛安排' }}</p>
+
+  <form method="post" class="stack auth-form" data-lock="{{ '提交中' if join else '登录中' }}" {% if join %}id="join-form"{% endif %}>
+    {{ csrf_field() }}
+    <label>昵称<input name="name" maxlength="40" required autocomplete="username"></label>
     {% if join %}
-      <script src="{{ url_for('static',filename='email-code.js') }}" defer></script>
-    {% else %}
-      <script src="{{ url_for('static',filename='passkeys.js') }}" defer></script>
+      <label>真实姓名<input name="real_name" maxlength="20" required autocomplete="name"></label>
     {% endif %}
-  </section>
+    <label>
+      密码<input name="password" type="password" minlength="10" maxlength="128" required autocomplete="{{ 'new-password' if join else 'current-password' }}">
+    </label>
+    {% if join %}
+      <label>邀请码<input name="code" required maxlength="64" autocomplete="off"></label>
+      <label>邮箱<input name="email" type="email" maxlength="254" required autocomplete="email"></label>
+      <div class="verification-row">
+        <label>邮箱验证码<input name="email_code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="one-time-code"></label>
+        <button type="button" id="send-code" class="outline" data-url="{{ url_for('join_send_code') }}">获取验证码</button>
+      </div>
+      <p class="hint" id="code-status" role="status">验证码 10 分钟内有效</p>
+    {% endif %}
+    <button class="primary auth-submit">{{ '加入球队' if join else '登录' }}</button>
+    {% if not join %}
+      <button type="button" class="outline" id="passkey-login" data-csrf="{{ csrf_token }}" data-options="{{ url_for('passkey_login_options') }}" data-finish="{{ url_for('passkey_login_finish') }}" data-home="{{ url_for('home') }}" hidden>通行密钥登录</button>
+    {% endif %}
+  </form>
+  {% if not join %}<p class="hint" id="passkey-login-status" role="status"></p>{% endif %}
+  <div class="auth-foot">
+    {% if join %}
+      <a href="{{ url_for('login') }}">已有账号？登录</a>
+    {% else %}
+      <a href="{{ url_for('reset_password') }}">找回账号或密码</a>
+      <a href="{{ url_for('join') }}">加入球队</a>
+    {% endif %}
+  </div>
+
+  {% if join %}
+    <script src="{{ url_for('static',filename='email-code.js') }}" defer></script>
+  {% else %}
+    <script src="{{ url_for('static',filename='passkeys.js') }}" defer></script>
+  {% endif %}
 {% endblock %}

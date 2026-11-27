@@ -1,28 +1,40 @@
 {% extends 'base.html' %}
 {% block title %}集体训练 · LINGNAN UNITED{% endblock %}
+{% block main_class %}wide{% endblock %}
 {% block head %}
   <link rel="stylesheet" href="{{ url_for('static',filename='training-leave.css') }}">
 {% endblock %}
 {% block content %}
-<div class="training-page">
-    <a class="back" href="{{ url_for('team') }}">球队</a>
-    <header class="training-heading">
-      <h1>集体训练</h1>
-      {% if can_manage %}<a class="smallbtn" href="{{ url_for('training_session_edit') }}">添加训练</a>{% endif %}
-    </header>
-    <p class="training-note">请至少提前 72 小时请假。逾期请假且实际缺席，计为旷训。</p>
-    <div class="training-list">
-      {% for training in sessions %}<a class="training-card" href="{{ url_for('training_session_detail',session_id=training.id) }}">
-          <div class="training-card-top">
-            <strong>{{ training.title }}</strong><span class="training-tag">{% if training.status == 'cancelled' %}已取消{% elif training.ends_at <= current_time %}已结束{% elif training.starts_at <= current_time %}进行中{% else %}即将开始{% endif %}</span>
-          </div>
-          <p>{{ training.starts_at[:16]|replace('T',' ') }}{% if training.location %} · {{ training.location }}{% endif %}</p>
-          <div class="training-card-meta">
-            <span>预计到场 {{ training.members - training.leave_count }} 人 · 请假 {{ training.leave_count }} 人</span>{% if training.my_leave == 'active' %}<span>已请假</span>{% endif %}
-          </div>
-        </a>{% else %}
-        <div class="empty">暂无集体训练安排。</div>
-      {% endfor %}
-    </div>
+  <a class="back" href="{{ url_for('team') }}">球队</a>
+  <header class="training-hub-heading">
+    <h1>集体训练</h1>
+    {% if plans_enabled %}<a class="section-link" href="#weekly-plans">每周训练计划 <span aria-hidden="true">↓</span></a>{% endif %}
+  </header>
+
+  <div class="training-hub{% if plans_enabled %} has-weekly-plans{% endif %}">
+    <section aria-labelledby="training-schedule">
+      <div class="training-section-heading">
+        <h2 id="training-schedule">训练安排与出勤</h2>
+        {% if can_manage %}<a class="section-link" href="{{ url_for('training_session_edit') }}">添加训练 <span aria-hidden="true">+</span></a>{% endif %}
+      </div>
+      <p class="training-note">请至少提前 72 小时请假。逾期请假且实际缺席，计为旷训。</p>
+      <div class="training-list">
+        {% for training in sessions %}
+          <a class="training-entry" href="{{ url_for('training_session_detail',session_id=training.id) }}">
+            <div class="training-entry-top">
+              <strong>{{ training.title }}</strong>
+              <span>{% if training.status == 'cancelled' %}已取消{% elif training.ends_at <= current_time %}已结束{% elif training.starts_at <= current_time %}进行中{% else %}即将开始{% endif %}</span>
+            </div>
+            <p><time datetime="{{ training.starts_at }}">{{ training.starts_at[:16]|replace('T',' ') }}</time>{% if training.location %} · {{ training.location }}{% endif %}</p>
+            <p>预计到场 {{ training.members - training.leave_count }} 人 · 请假 {{ training.leave_count }} 人{% if training.my_leave == 'active' %} · 你已请假{% endif %}</p>
+          </a>
+        {% else %}
+          <p class="training-empty">暂无集体训练安排</p>
+        {% endfor %}
+      </div>
+    </section>
+    {% if plans_enabled %}
+      {% include 'plans_list.html' %}
+    {% endif %}
   </div>
 {% endblock %}

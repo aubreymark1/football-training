@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block body_class %}auth-page{% endblock %}
+{% block main_class %}auth-main{% endblock %}
+{% block head %}
+  {% if not me %}
+    <link rel="stylesheet" href="{{ url_for('static',filename='auth-crest.css') }}">
+    <script src="{{ url_for('static',filename='auth-crest.js') }}" defer></script>
+  {% endif %}
+{% endblock %}
+{% block backdrop %}
+  {% if not me %}
+    <div class="auth-backdrop" aria-hidden="true">
+      {% include '_auth_crest.html' %}
+    </div>
+  {% endif %}
+{% endblock %}
+{% block main_body %}
+  <section class="auth-pane" aria-labelledby="auth-title">
+    {{ super() }}
+  </section>
+{% endblock %}

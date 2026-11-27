@@ -6,121 +6,159 @@
 {% endblock %}
 {% block content %}
   {% set todo=required|rejectattr('done')|rejectattr('exempt')|rejectattr('pending')|list|length %}{% set waiting=required|length - required_done - todo %}
-  <section class="next-match" aria-label="下一场比赛">
-    {% if fixtures %}{% set game=fixtures[0] %}
-      <a class="next-match-game" href="{{ url_for('matches_detail', match_id=game.id) }}">
-        <span class="next-match-line">
-          <span class="next-match-tag">下一场</span>
-          <time datetime="{{ game.date }}T{{ game.time }}">{{ game.date[5:7]|int }}月{{ game.date[8:10]|int }}日 · {{ game.time }}</time>
-        </span>
-        <span class="next-match-teams">{{ game.home }} <i>vs</i> {{ game.away }}</span>
-      </a>
-    {% else %}
-      <p class="next-match-empty">近期没有比赛安排。</p>
-    {% endif %}
-    <a class="next-match-centre" href="{{ url_for('matches_index') }}">比赛中心</a>
-  </section>
-  <section class="board">
-    <div class="board-head">
-      <div>
-        <p class="board-range">{{ strip.range }}</p>
-        <h1>本周训练</h1>
-      </div>
-      <div class="board-points"><strong>{{ points }}</strong><span>我的积分</span></div>
+  <header class="home-header">
+    <div>
+      <p class="home-period">{{ strip.range }}</p>
+      <h1>本周训练</h1>
+      <p class="home-summary">
+        {% if not required %}本周暂无必做{% elif todo %}还有 {{ todo }} 项必做，{% if strip.days_left %}周日 24:00 截止{% else %}今日 24:00 截止{% endif %}{% elif waiting %}必做已交，待审核{% elif exempt_all %}本周必做已免除{% else %}必做已完成 {{ required_done }}/{{ required|length }}{% endif %}
+      </p>
     </div>
-    <p class="board-status{% if required and not todo and not waiting %} is-clear{% endif %}">
-      {% if not required %}本周还没有必做任务{% if strip.trained %}，这周已经练了 <b>{{ strip.trained }}</b> 天{% endif %}{% elif todo %}必做还差 <b>{{ todo }}</b> 项没交，{% if strip.days_left %}离周日截止还有 <b>{{ strip.days_left }}</b> 天{% else %}今天 24:00 截止{% endif %}{% elif waiting %}必做已经提交，等管理员审核{% elif exempt_all %}本周必做已免除，好好休养{% else %}本周必做已完成 <b>{{ required_done }}/{{ required|length }}</b>{% endif %}
-    </p>
-    <ol class="track" style="--elapsed:{{ strip.elapsed }}" aria-label="本周打卡情况">
+    <div class="home-actions">
+      <a class="section-link" href="{{ url_for('training_sessions') }}">集体训练 <span aria-hidden="true">→</span></a>
+      <a class="smallbtn" href="{{ url_for('free_training') }}" data-open-submit data-task-title="自主训练" data-task-sub="单次上限 50 分，由管理员审核给分"><span aria-hidden="true">+</span> 自主训练</a>
+    </div>
+  </header>
+
+  <section class="week-progress" aria-labelledby="week-progress-title">
+    <header>
+      <h2 id="week-progress-title">本周进度</h2>
+      <p>已训练 <strong>{{ strip.trained }}</strong><span> / 7 天</span></p>
+    </header>
+    <ol class="week-axis" aria-label="本周每日训练记录">
       {% for d in strip.days %}
-        <li class="{{ 'on ' if d.trained }}{{ 'today ' if d.today }}{{ 'future ' if d.future }}{{ 'deadline' if loop.last }}" style="--i:{{ loop.index0 }}">
-          <i></i><span>{{ '今天' if d.today else d.label }}</span>{% if d.trained %}<span class="sr-only">已训练</span>{% endif %}
+        <li class="{{ 'on ' if d.trained }}{{ 'today ' if d.today }}{{ 'future' if d.future }}"{% if d.today %} aria-current="date"{% endif %}>
+          <span class="week-day">{{ '今天' if d.today else '周' ~ d.label }}</span>
+          <span class="week-tick" aria-hidden="true"></span>
+          <time datetime="{{ d.date }}">{{ d.day }}<span class="sr-only">日</span></time>
+          <span class="sr-only">{{ '已训练' if d.trained else '尚未记录' }}</span>
         </li>
       {% endfor %}
     </ol>
   </section>
-  <div class="home-grid">
-    <div class="home-main">
-  <div class="section-head" id="guide-tasks">
-    <h2>本周任务</h2>
-  </div>
-  {% macro state(t) %}{% if t.exempt %}<span class="state">已免除</span>{% elif t.done %}<span class="state state-done">已通过 {{ t.done }} 次</span>{% elif t.pending %}<span class="state state-wait">待审核 {{ t.pending }} 条</span>{% else %}<span class="state state-todo">待完成</span>{% endif %}{% endmacro %}
-  {% macro go(t) %}<a class="task-go {{ 'outline' if t.done or t.pending or t.exempt else 'smallbtn' }}" aria-label="提交{{ t.title }}" href="{{ url_for('submit',tid=t.id) }}">{{ '再交一条' if t.done or t.pending or t.exempt else '去提交' }}</a>{% endmacro %}
-  {% if required %}
-    <div class="required-block">
-      <div class="required-label">必做任务 · 周日 24:00 前提交 · 未完成本周扣 10 分</div>
-      <div class="stack">
-        {% for t in required %}
-          <article class="task required{% if t.done or t.exempt %} is-done{% endif %}">
-            <div class="grow">
-              <h3>{{ t.title }}</h3>
-              {% if t.detail %}
-                <p>{{ t.detail }}</p>
-              {% endif %}{{ state(t) }}
-            </div>
-            {{ go(t) }}
-          </article>
-        {% endfor %}
-      </div>
-    </div>
-  {% endif %}
-  {% if has_bonus %}
-    <h3 class="module-title">附加训练</h3>
-  {% endif %}
-  {% for code,label,items in modules %}{% if items %}
-      <details class="module">
-        <summary class="module-head">
-          <span class="module-name">{{ label }}</span><span class="module-meta">{{ items|length }} 项{% set passed=items|selectattr('done')|list|length %}{% if passed %}，已通过 {{ passed }} 项{% endif %}</span>
-        </summary>
-        <div class="stack">
-          {% for t in items %}
-            <article class="task{% if t.done or t.exempt %} is-done{% endif %}">
-              <div class="grow">
-                <h3>{{ t.title }}</h3>
-                {% if t.detail %}
-                  <p>{{ t.detail }}</p>
-                {% endif %}<span class="task-points">每次 +{{ t.points }} 分，每周最多计 {{ t.cap }} 次</span>{{ state(t) }}
-              </div>
-              {{ go(t) }}
-            </article>
-          {% endfor %}
-        </div>
-      </details>
-    {% endif %}{% endfor %}
-  {% if not tasks %}
-    <div class="empty">本周暂无任务，可以先交一条自主训练。</div>
-  {% endif %}
-  <a class="secondary-link" href="{{ url_for('free_training') }}"><span>自主训练<small>自由上传，管理员酌情给分</small></span></a>
-  {% if plans_enabled %}<a class="secondary-link" href="{{ url_for('team_plans_list') }}"><span>球队训练计划<small>查看集合安排、训练步骤和战术板</small></span></a>{% endif %}
+
   {% if not me.real_name %}
-    <div class="notice warn-notice mt-12"><span>还没填真实姓名，球队页里队友认不出你。</span><a href="{{ url_for('account') }}">去填写</a></div>
+    <div class="notice warn-notice mt-16"><span>还没填真实姓名，队友无法在榜单认出你</span><a href="{{ url_for('account') }}">去填写</a></div>
   {% endif %}
   {% if standing and standing.bottom %}
-    <div class="notice warn-notice mt-12">你在球队训练积分后 20%，本周需额外完成 1 项附加训练（目前通过 {{ standing.bonus }} 项）。</div>
+    <div class="notice warn-notice mt-16"><span>当前处于积分后 20%，本周需加练 1 项附加训练（已过 {{ standing.bonus }} 项）</span></div>
   {% endif %}
+
+  <div class="home-grid">
+    <div class="home-main">
+      <div class="section-head" id="guide-tasks">
+        <h2>本周任务</h2>
+      </div>
+      {% macro state(t) %}{% if t.exempt %}<span class="state">已免除</span>{% elif t.done %}<span class="state state-done">已通过 {{ t.done }} 次</span>{% elif t.pending %}<span class="state state-wait">待审核 {{ t.pending }} 条</span>{% else %}<span class="state state-todo">待完成</span>{% endif %}{% endmacro %}
+      {% macro go(t, sub) %}<a class="task-go section-link" aria-label="提交{{ t.title }}" href="{{ url_for('submit',tid=t.id) }}" data-open-submit data-task-title="{{ t.title }}" data-task-sub="{{ sub }}">{{ '再交一条' if t.done or t.pending or t.exempt else '去提交' }} <span aria-hidden="true">↗</span></a>{% endmacro %}
+
+      {% if required %}
+        <div class="required-block">
+          <div class="required-label">必做任务 · 周日 24:00 截止，未完成扣 10 分</div>
+          <div class="stack">
+            {% for t in required %}
+              <article class="task required{% if t.done or t.exempt %} is-done{% endif %}">
+                <div class="grow">
+                  <h3>{{ t.title }}</h3>
+                  {% if t.detail %}<p>{{ t.detail }}</p>{% endif %}
+                  {{ state(t) }}
+                </div>
+                {{ go(t, '本周必做任务') }}
+              </article>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+
+      {% if has_bonus %}
+        <div class="module-bar">
+          <h3 class="module-title">附加训练</h3>
+          <div class="module-filters" role="group" aria-label="筛选附加训练">
+            <button type="button" class="is-active" data-module-filter="all" aria-pressed="true">全部</button>
+            {% for code,label,items in modules %}{% if items %}
+              <button type="button" data-module-filter="{{ code }}" aria-pressed="false">{{ label[:2] }}</button>
+            {% endif %}{% endfor %}
+          </div>
+        </div>
+      {% endif %}
+
+      {% for code,label,items in modules %}{% if items %}
+        <details class="module" data-module="{{ code }}" open>
+          <summary class="module-head">
+            <span class="module-name">{{ label }}</span>
+            <span class="module-meta">{{ items|selectattr('done')|list|length }} / {{ items|length }}</span>
+          </summary>
+          <div class="stack">
+            {% for t in items %}
+              <article class="task{% if t.done or t.exempt %} is-done{% endif %}">
+                <div class="grow">
+                  <h3>{{ t.title }}</h3>
+                  {% if t.detail %}<p>{{ t.detail }}</p>{% endif %}
+                  <div><span class="task-points">+{{ t.points }} 分 · 上限 {{ t.cap }} 次</span>{{ state(t) }}</div>
+                </div>
+                {{ go(t, label ~ ' · 每次 +' ~ t.points ~ ' 分') }}
+              </article>
+            {% endfor %}
+          </div>
+        </details>
+      {% endif %}{% endfor %}
+
+      {% if not tasks %}
+        <p class="muted">本周暂无指定任务</p>
+      {% endif %}
     </div>
+
     <aside class="home-side">
+      <section class="home-fixture">
+        <div class="section-head">
+          <h2>下一场比赛</h2>
+          <a class="section-link" href="{{ url_for('matches_index') }}">赛程表 <span aria-hidden="true">→</span></a>
+        </div>
+        {% if fixtures %}{% set game=fixtures[0] %}
+          <a class="next-match-game" href="{{ url_for('matches_detail', match_id=game.id) }}">
+            <time datetime="{{ game.date }}T{{ game.time }}">{{ game.date[5:7]|int }}月{{ game.date[8:10]|int }}日 {{ game.time }}</time>
+            <strong>{{ game.home }} <span>vs</span> {{ game.away }}</strong>
+          </a>
+        {% else %}
+          <p class="muted">近期无赛程</p>
+        {% endif %}
+      </section>
       <div class="section-head" id="guide-records">
         <h2>最近记录</h2>
-        <a href="{{ url_for('history') }}">全部记录</a>
+        <a class="section-link" href="{{ url_for('history') }}">全部 <span aria-hidden="true">→</span></a>
       </div>
-      <div class="card">
+      <div class="home-records">
         {% for r in records %}
           <div class="listrow">
             <div>
               <strong>{{ r.title }}</strong>
-              <p>{{ r.sport }}，{{ r.minutes }} 分钟，{{ r.created[5:10] }}</p>
+              <p class="mono">{{ r.sport }} · {{ r.minutes }} min · {{ r.created[5:10] }}</p>
               {% if r.review_note %}
-                <p>审核备注：{{ r.review_note }}</p>
+                <p>备注：{{ r.review_note }}</p>
               {% endif %}{% include '_record_points.html' %}
             </div>
             <span class="status status-{{ r.status }}">{{ status_label(r.status) }}</span>
           </div>
         {% else %}
-          <p class="muted">还没有记录。练完后从上面的任务提交第一条。</p>
+          <p class="muted">暂无打卡记录</p>
         {% endfor %}
       </div>
-      <a class="secondary-link" href="{{ url_for('history',section='reports') }}">我的周分析</a>
+      <a class="section-link" href="{{ url_for('history',section='reports') }}">我的周分析 <span aria-hidden="true">→</span></a>
     </aside>
   </div>
+
+  <dialog id="submit-drawer" class="drawer" aria-labelledby="drawer-title">
+    <div class="drawer-head">
+      <div>
+        <h2 id="drawer-title">记录训练</h2>
+        <p id="drawer-sub"></p>
+      </div>
+      <button type="button" class="iconbtn" data-close-drawer aria-label="关闭">×</button>
+    </div>
+    <div class="drawer-body">
+      {% set action_url=url_for('free_training') %}
+      {% set submit_label='提交记录' %}
+      {% include '_record_form.html' %}
+    </div>
+  </dialog>
 {% endblock %}

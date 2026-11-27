@@ -198,7 +198,15 @@ def init_library(connection, timestamp, logger):
                     logger.warning('An existing plan could not be imported into the training item library')
 
 
-def register(app, *, db, current, login_required, admin_required, now, week, ai_call, search_web, restricted_request, restricted_output):
+def list_plans(connection, can_edit):
+    sql = 'SELECT * FROM team_training_plans ' + ('' if can_edit else 'WHERE published IS NOT NULL ') + 'ORDER BY week DESC LIMIT 100'
+    plans = [dict(row) for row in connection.execute(sql)]
+    for plan in plans:
+        plan['content'] = json.loads(plan['draft'] if can_edit else plan['published'])
+    return plans
+
+
+def register(app, *, db, current, login_required, admin_required, now, ai_call, search_web, restricted_request, restricted_output):
     def can_edit(user):
         return bool(user and (user['role'] == 'admin' or user['is_captain']))
 
@@ -257,17 +265,6 @@ def register(app, *, db, current, login_required, admin_required, now, week, ai_
             abort(404)
         return jsonify(item=json.loads(row['content']))
 
-    @app.get('/plans')
-    @login_required
-    def team_plans_list():
-        editing = can_edit(current())
-        with db() as c:
-            sql = 'SELECT * FROM team_training_plans ' + ('' if editing else 'WHERE published IS NOT NULL ') + 'ORDER BY week DESC LIMIT 100'
-            rows = [dict(row) for row in c.execute(sql)]
-        for row in rows:
-            row['content'] = json.loads(row['draft'] if editing else row['published'])
-        return render_template('plans_list.html', plans=rows, can_edit=editing, default_week=week())
-
     @app.post('/plans/new')
     @editor_required
     def team_plans_new():
@@ -278,7 +275,7 @@ def register(app, *, db, current, login_required, admin_required, now, week, ai_
                 raise ValueError()
         except ValueError:
             flash('请选择该周的周一。', 'error')
-            return redirect(url_for('team_plans_list'))
+            return redirect(url_for('training_sessions', _anchor='weekly-plans'))
         with db() as c:
             c.execute('INSERT OR IGNORE INTO team_training_plans(week,draft,updated_by,updated_at) VALUES(?,?,?,?)',
                       (day, json.dumps(empty_plan(), ensure_ascii=False), current()['id'], now()))
